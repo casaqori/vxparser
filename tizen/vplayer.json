@@ -1,3 +1,7 @@
 {
-    "packages": ["sqlite3", "https://raw.githubusercontent.com/Mastaaa1987/vxparser/tizen/dist/vplayer-0.0.1-py3-none-any.whl"]
+    "packages": [ "sqlite3" ],
+    "files": {
+        "https://raw.githubusercontent.com/Mastaaa1987/vxparser/tizen/tizen/common.py": "./common.py",
+        "https://raw.githubusercontent.com/Mastaaa1987/vxparser/tizen/tizen/sql.py": "./sql.py"
+    }
 }
