@@ -6,12 +6,13 @@ from pyodide.http import pyfetch, open_url
 from pyodide.ffi import create_proxy
 from datetime import datetime, timedelta
 from js import alert, prompt, localStorage, Hls, FileReader, console, Uint8Array, File
-from . import common
+sys.path.append('/home/pyodide')
+import common
 
 
-listItems = common.listItems
-listGroups = common.listGroups
-urls = common.urls
+epgInput = common.epgInput
+epgOutput = common.epgOutput
+epgIds = common.epgIds
 htmlInput = common.htmlInput
 htmlOutput = common.htmlOutput
 epgOutput = common.epgOutput

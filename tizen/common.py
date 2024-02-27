@@ -6,14 +6,14 @@ from pyodide.http import pyfetch, open_url
 from pyodide.ffi import create_proxy
 from datetime import datetime, timedelta
 from js import alert, prompt, localStorage, Hls, FileReader, console, Uint8Array, File
-from . import sql
+import sql
 
-listItems = {}
-listGroups = {}
-urls = {}
-htmlInput = { 'content': '<div class="content" id="content"></div>', 'header': '<div class="header"><video id="video"></video><div class="cols" id="cols"></div>', 'main': '<div class="main" id="main"></div>', 's2': '<div id="s2" class="sidebar hidden"><ul></ul></div>', 's1': '<div id="s1" class="sidebar hidden"><ul></ul></div>', 'li1': '<li id="%s"><i class="bx bx-movie-play bx-md"></i><span class="nav-item">%s</span></li>', 'li2': '<li id="%s"><span class="nav-item">%s</span></li>', 'con': [ '<div class="row" id="_r%s_">', '<div class="card" id="_r%s_c%s_"><div class="container" id="_i%s_"><img src="%s" alt="" id="%s"><div class="title" id="%s">%s</div></div></div>', '</div>' ], 'head': '<div class="title">%s</div><div class="sub-title">%s - %s</div><div class="details" style="flex-grow: 1;">%s</div>', 'head1': '<div class="title">Test</div><div class="sub-title">Sub <div class="progress-bar"><span class="bar"><span class="progress" style="width: 50px;"></span></span></div></div><div class="details" style="flex-grow: 1;">Details</div>' }
-htmlOutput = { 'html': '<li id="Settings" py-click="onclick_s1"><i class="bx bx-cog bx-md"></i><span class="nav-item">Settings</span></li><li id="Exit"><i class="bx bx-exit bx-md"></i><span class="nav-item">Logout</span></li>', 'Settings': { 'html': '<li id="list"><span class="nav-item">Lists</span></li>', 'list': { 'html': '<div class="content" id="settings"><div class="list"><div class="item" id="expandable"><div class="col head expand"><b>Add New List</b></div><div class="col"><button class="b0"><b>v</b></button></div></div><div class="hidden" id="hide"><div class="item"><div class="col expand"><div class="row head"><b>M3u8 Liste</b></div><div class="row"><input class="w3" placeholder="List Name ..."> <input class="w5" placeholder="List Url ..."></div></div><div class="col"><button class="b1">Add</button></div></div><div class="item"><div class="col expand"><div class="row head"><b>Xtream Account</b></div><div class="row"><input class="w3" placeholder="List Name ..."> <input class="w5" placeholder="Server Url ..."></div><div class="row"><input class="w3" placeholder="User Name ..."> <input class="w3" placeholder="User Password ..."></div></div><div class="col"><button class="b1">Add</button></div></div></div><div class="item"><div class="col head expand"><b>Edit User Lists</b></div><div class="col"><button class="b0"><b>v</b></button></div></div><div class="hidden" id="hide"></div></div></div>' } } }
+
+epgInput = {}
 epgOutput = {}
+epgIds = []
+htmlInput = { 'content': '<div class="content" id="content"></div>', 'header': '<div class="header" id="header"><video id="video"></video><div class="cols" id="hc"></div>', 'main': '<div class="main" id="main"></div>', 's2': '<div id="s2" class="sidebar hidden"><ul></ul></div>', 's1': '<div id="s1" class="sidebar hidden"><ul></ul></div>', 'li1': '<li id="%s"><i class="bx bx-movie-play bx-md"></i><span class="nav-item">%s</span></li>', 'li2': '<li id="%s"><span class="nav-item">%s</span></li>', 'con': [ '<div class="row" id="_r%s_">', '<div class="card" id="_r%s_c%s_"><div class="container" id="_i%s_"><img src="%s" alt="" id="%s"><div class="title" id="%s">%s</div></div></div>', '</div>' ], 'head': '<div class="title">%s</div><div class="sub-title">%s - %s</div><div class="details" style="flex-grow: 1;">%s</div>', 'head1': '<div class="title">Test</div><div class="sub-title">Sub <div class="progress-bar"><span class="bar"><span class="progress" style="width: 50px;"></span></span></div></div><div class="details" style="flex-grow: 1;">Details</div>' }
+htmlOutput = { 'html': '<li id="Settings" py-click="onclick_s1"><i class="bx bx-cog bx-md"></i><span class="nav-item">Settings</span></li><li id="Exit"><i class="bx bx-exit bx-md"></i><span class="nav-item">Logout</span></li>', 'Settings': { 'html': '<li id="list"><span class="nav-item">Lists</span></li>', 'list': { 'html': '<div class="content" id="settings"><div class="list"><div class="item i_" id="i_0"><div class="col head expand"><b>Add New List</b></div><div class="col"><button class="b0 i_0_a_" id="a_0"><b>v</b></button></div></div><div class="hidden i_0_h_" id="h_0"><div class="item i_0_s_" id="s_0"><div class="col expand"><div class="row head"><b>M3u8 Liste</b></div><div class="row"><input class="w3 i_0_s_0_a_" id="a_0" placeholder="List Name ..."> <input class="w5 i_0_s_0_a_" id="a_1" placeholder="List Url ..."></div></div><div class="col"><button class="b1 i_0_s_0_a_" id="a_2">Add</button></div></div><div class="item i_0_s_" id="s_1"><div class="col expand"><div class="row head"><b>Xtream Account</b></div><div class="row"><input class="w3 i_0_s_1_a_" id="a_0" placeholder="List Name ..."> <input class="w5 i_0_s_1_a_" id="a_1" placeholder="Server Url ..."></div><div class="row"><input class="w3 i_0_s_1_a_" id="a_2" placeholder="User Name ..."> <input class="w3 i_0_s_1_a_" id="a_3" placeholder="User Password ..."></div></div><div class="col"><button class="b1 i_0_s_1_a_" id="a_4">Add</button></div></div></div><div class="item i_" id="i_1"><div class="col head expand"><b>Edit User Lists</b></div><div class="col"><button class="b0 i_1_a_" id="a_0"><b>v</b></button></div></div><div class="hidden i_1_h_" id="h_0"></div></div></div>' } } }
 keyCodes = { '8': 'Del', '9': 'Tab', '13': 'Enter', '16': 'Cap', '17': 'Strg', '18': 'Alt', '19': 'Pause', '27': 'Esc', '32': 'Space', '33': 'PageUp', '34': 'PageDown', '35': 'Ende', '36': 'Pos1', '37': 'Left', '38': 'Up', '39': 'Right', '40': 'Down', '45': 'Einfg', '46': 'Entf', '48': '0', '49': '1', '50': '2', '51': '3', '52': '4', '53': '5', '54': '6', '55': '7', '56': '8', '57': '9', '77': 'm', '225': 'AltGr', '403': 'Red', '404': 'Green', '405': 'Yellow', '406': 'Blue', '412': '<<', '413': 'Stop', '415': 'Play', '416': 'Rec', '417': '>>', '427': 'CH-', '428': 'CH+', '447': 'Vol-', '448': 'Vol+', '449': 'Mute', '457': 'Info', '10009': 'Back', '10073': 'CH-List', '10135': 'Tools', '10190': 'Pre-CH', '10225': 'Search', '10252': 'Play_Pause', '65376': 'Done', '65385': 'Cancel' }
 Pause = False
 Fullscreen = False
@@ -21,7 +21,7 @@ con = wsig = None
 
 
 def checkHtml():
-    global htmlInput, htmlOutput
+    global htmlInput, htmlOutput, epgOutput
     body = document.querySelector("body")
     active1 = active2 = active3 = None
     if (actives := document.querySelectorAll(".active")):
@@ -51,6 +51,26 @@ def checkHtml():
                     content.innerHTML = htmlOutput[str(s1s.id)][active2]['html']
                 else:
                     main.innerHTML = htmlOutput[str(s1s.id)][active2]['html']
+    elif active1 == 'content':
+        console.log('content!')
+        if not '_r' in active2 or not '_c' in active2:
+            window.console.log('[Content][Card][ID][Error!]')
+            return
+        if not (ci := document.querySelector('#'+active2)):
+            window.console.log('[Content][Card][Error!]')
+            return
+        if not (img := ci.querySelector('img')):
+            window.console.log('[Content][Card][IMG][Error!]')
+            return
+        if not (hc := document.querySelector('#hc')):
+            window.console.log('[Header]Content][NotFound][Error!]')
+            return
+        if not str(img.id) == '' and str(img.id) in epgOutput:
+            hc.innerHTML = epgOutput[str(img.id)]['html']
+            console.log(str(hc.innerHTML), str(epgOutput[str(img.id)]['html']))
+        else:
+            hc.innerHTML = ''
+            console.log(str(img.id), len(epgOutput), str(active1), str(active2))
 
 
 def eventHandler(keyEvent):
@@ -75,31 +95,6 @@ def eventHandler(keyEvent):
             elif active1 and not active2: active2 = str(act.id)
             elif active1 and active2 and not active3: active3 = str(act.id)
             else: break
-    if s1:
-        t = '[s1'
-        if (s1s := s1.querySelector('.selected')): selected1 = str(s1s.id)
-        else: t += 's'
-        if (s1a := s1.querySelector('.actived')): actived1 = str(s1a.id)
-        else: t += 'a'
-        if not (s1i := s1.querySelector('.active')): t += 'i'
-        if not t == '[s1': log += t + ']'
-    if s2:
-        t = '[s2'
-        if (s2s := s2.querySelector('.selected')): selected2 = str(s2s.id)
-        else: t += 's'
-        if (s2a := s2.querySelector('.actived')): actived2 = str(s2a.id)
-        else: t += 'a'
-        if not (s2i := s2.querySelector('.active')): t += 'i'
-        if not t == '[s2': log += t + ']'
-    if c:
-        t = '[c'
-        if (cs := c.querySelector('.selected')): selected3 = str(cs.id)
-        else: t += 's'
-        if (ca := c.querySelector('.actived')): actived3 = str(ca.id)
-        else: t += 'a'
-        if not (ci := c.querySelector('.active')): t += 'i'
-        if not t == '[c': log += t + ']'
-    if not log == '': console.log('Not found: ' + log)
     if str(keyEvent) == 'Play':
         vid = document.getElementById('video')
         vid.play()
@@ -117,7 +112,6 @@ def eventHandler(keyEvent):
             vid.pause()
             Pause = True
     elif str(keyEvent) == 'Enter':
-        console.log(active1)
         if Fullscreen: return
         elif active1 == 's1':
             if active2 in htmlOutput:
@@ -133,54 +127,57 @@ def eventHandler(keyEvent):
                 s1i.classList.add('selected')
                 s1.classList.remove('active')
                 s2 = body.querySelector('#s2')
-                if not (s2i := body.querySelector('.actived')):
-                    s2ii = body.querySelectorAll('#s2 li')
-                    s2i = s2ii[0]
+                s2ii = body.querySelectorAll('#s2 li')
+                s2i = s2ii[0]
                 if (s2.classList.contains('hidden')): s2.classList.remove('hidden')
                 if not (s2.classList.contains('active')): s2.classList.add('active')
                 if (s2i.classList.contains('actived')): s2i.classList.remove('actived')
                 if not (s2i.classList.contains('active')): s2i.classList.add('active')
             checkHtml()
         elif active1 == 's2':
-            if (con := body.querySelector('.main #content')):
-                if not (ci := con.querySelector('.actived')):
-                    if not (ci := con.querySelector('#_r0_c0_')):
+            if (conn := body.querySelector('.main #content')):
+                if not (ci := conn.querySelector('.actived')):
+                    if not (ci := conn.querySelector('#_r0_c0_')):
                         window.console.log('[Card][Error!]')
                         return
-            elif (con := body.querySelector('.main #settings')):
-                console.log('JA')
+            elif (conn := body.querySelector('.main #settings')):
+                return
+                if not (ci := conn.querySelector('.actived')):
+                    if not (ci := conn.querySelector('#i_0')):
+                        window.console.log('[Settings][Item][Error!]')
+                        return
             s2 = body.querySelector('#'+active1)
             s2i = s2.querySelector('#'+active2)
             s2.classList.remove('active')
             s2.classList.add('activated')
             s2i.classList.remove('active')
             s2i.classList.add('selected')
-            con.classList.add('active')
+            conn.classList.add('active')
             if (ci.classList.contains('actived')): ci.classList.remove('actived')
             ci.classList.add('active')
         elif active1 == 'content':
-            global urls
             vid = document.getElementById('video')
-            con = body.querySelector('#'+active1)
-            ci = con.querySelector('#'+active2)
+            conn = body.querySelector('#'+active1)
+            ci = conn.querySelector('#'+active2)
             if (ci.classList.contains('selected')):
                 if not (vid.classList.contains('fullscreen')):
                     vid.classList.add('fullscreen')
                     Fullscreen = True
             else:
-                if not (cic := con.querySelector('#'+active2+' .container')):
+                if not (cic := conn.querySelector('#'+active2+' .container')):
                     window.console.log('[Active][Item][Container][Error!]')
                     return
                 i = re.sub('_.*', '', re.sub('.*_i', '', cic.id))
                 if not (s2s := body.querySelector('#s2 .selected')):
                     window.console.log('[Sidebar][2][Selected][Error!]')
                     return
-                url = urls[str(s2s.id)][int(i)]
-                hls = Hls.new()
-                hls.loadSource(url)
-                hls.attachMedia(vid)
-                if not (ci.classList.contains('selected')): ci.classList.add('selected')
-                vid.play()
+                global con
+                cur = con.cursor()
+                if not (c := cur.execute('SELECT * FROM channels WHERE id="'+str(i)+'"').fetchone()):
+                    window.console.log('[SQL][%s][NotFound!]' % str(i))
+                    return
+                url = str(c['url'])
+                asyncio.ensure_future(resolve_link(url))
 
     elif str(keyEvent) == 'Back' or str(keyEvent) == 'Esc':
         if Fullscreen:
@@ -233,13 +230,15 @@ def eventHandler(keyEvent):
             ci.classList.remove('active')
             cn.classList.add('active')
             cn.scrollIntoView()
-        else:
+            checkHtml()
+        elif active1 == 's1' or active1 == 's2':
             items = body.querySelectorAll('#'+active1+' li')
             x = 0
             for item in items:
                 if (item.classList.contains('active')): break
                 x += 1
-            items[x].classList.remove('active')
+            if (items[x].classList.contains('active')): items[x].classList.remove('active')
+            else: console.log(str(active1), str(active2))
             if x < int(len(items) - 1): items[int(x+1)].classList.add('active')
             else: items[int(0)].classList.add('active')
             if active1 == 's2':
@@ -267,13 +266,15 @@ def eventHandler(keyEvent):
             ci.classList.remove('active')
             cn.classList.add('active')
             cn.scrollIntoView()
-        else:
+            checkHtml()
+        elif active1 == 's1' or active1 == 's2':
             items = body.querySelectorAll('#'+active1+' li')
             x = 0
             for item in items:
                 if (item.classList.contains('active')): break
                 x += 1
-            items[x].classList.remove('active')
+            if (items[x].classList.contains('active')): items[x].classList.remove('active')
+            else: console.log(str(active1), str(active2))
             if x > 0: items[int(x-1)].classList.add('active')
             else: items[int(len(items)-1)].classList.add('active')
             if active1 == 's2':
@@ -300,6 +301,7 @@ def eventHandler(keyEvent):
             ci.classList.remove('active')
             cn.classList.add('active')
             cn.scrollIntoView()
+            checkHtml()
     elif str(keyEvent) == 'Left':
         if Fullscreen: return
         elif active1 == 'content':
@@ -320,6 +322,7 @@ def eventHandler(keyEvent):
             ci.classList.remove('active')
             cn.classList.add('active')
             cn.scrollIntoView()
+            checkHtml()
     pass
 
 
@@ -381,7 +384,7 @@ def htmlBuilder(lid):
                 htmlOutput[m3u8]['html'] += li2 %(group, group)
                 htmlOutput[m3u8][group] = { 'html': '' }
             if str(c[group]) == "0": htmlOutput[m3u8][group]['html'] += conn['b'] % str(r[group])
-            if row['logo'] == None or row['logo'] == '': logo = "no.png"
+            if row['logo'] == None or row['logo'] == '': logo = "https://raw.githubusercontent.com/Mastaaa1987/vxparser/tizen/tizen/vplayer.png"
             else: logo = row['logo']
             if not row['tid'] == None and not row['tid'] == '': tid = row['tid']
             else: tid = ''
@@ -395,32 +398,17 @@ def htmlBuilder(lid):
 
 
 def epgBuilder():
-    global con, epgOutput, htmlInput
-    cur = con.cursor()
+    global epgOutput, epgInput, htmlInput, epgIds
 
-    epg_channels = []
-    epg_ids = {}
-    for row in cur.execute('SELECT * FROM epgs ORDER BY id'):
-        if not row['tid'] == None and not row['tid'] == '':
-            epg_channels.append(str(row['tid']))
-            epg_ids[str(row['tid'])] = str(row['rid'])
-
-    epgOutput = {}
     head = htmlInput['head']
-    for epg in epg_channels:
-        rid = epg_ids[str(epg)]
-        if (test := cur.execute('SELECT * FROM epg WHERE cid="'+str(rid)+'" AND start < "'+str(int(time.time()))+'" AND end > "'+str(int(time.time()))+'"').fetchone()):
+    for rid in epgIds:
+        if not str(rid) in epgOutput and str(rid) in epgInput:
             epgOutput[str(rid)] = { 'html': '' }
-            epgOutput[str(rid)]['end'] = int(test['end'])
-            title = re.sub('b\'', '\'', str(b64decode(re.sub('b\'', '\'', test['title'])))).encode('ascii', 'ignore').decode('ascii')
-            desc = re.sub('b\'', '\'', str(b64decode(re.sub('b\'', '\'', test['desc'])))).encode('ascii', 'ignore').decode('ascii')
-            epgOutput[str(rid)]['html'] += head %(title, str(datetime.fromtimestamp(int(test['start'])).strftime("%H:%M")), str(datetime.fromtimestamp(int(test['end'])).strftime("%H:%M")), desc)
-            if (test := cur.execute('SELECT * FROM epg WHERE cid="'+str(rid)+'" AND start > "'+str(int(time.time()))+'" ORDER BY start').fetchone()):
-                epgOutput[str(rid)]['start'] = int(test['start'])
-                title = re.sub('b\'', '\'', str(b64decode(re.sub('b\'', '\'', test['title'])))).encode('ascii', 'ignore').decode('ascii')
-                desc = re.sub('b\'', '\'', str(b64decode(re.sub('b\'', '\'', test['desc'])))).encode('ascii', 'ignore').decode('ascii')
-                epgOutput[str(rid)]['html'] += head %(title, str(datetime.fromtimestamp(int(test['start'])).strftime("%H:%M")), str(datetime.fromtimestamp(int(test['end'])).strftime("%H:%M")), desc)
-    console.log(str(epgOutput))
+            if len(epgInput[str(rid)]) > 1:
+                epgOutput[str(rid)]['html'] += head %(epgInput[str(rid)][0]['title'], str(datetime.fromtimestamp(int(epgInput[str(rid)][0]['start'])).strftime("%H:%M")), str(datetime.fromtimestamp(int(epgInput[str(rid)][0]['end'])).strftime("%H:%M")), epgInput[str(rid)][0]['text'])
+                epgOutput[str(rid)]['html'] += head %(epgInput[str(rid)][1]['title'], str(datetime.fromtimestamp(int(epgInput[str(rid)][1]['start'])).strftime("%H:%M")), str(datetime.fromtimestamp(int(epgInput[str(rid)][1]['end'])).strftime("%H:%M")), epgInput[str(rid)][1]['text'])
+                if not 'end' in epgOutput[str(rid)]: epgOutput[str(rid)]['end'] = int(epgInput[str(rid)][0]['end'])
+                if not 'start_next' in epgOutput[str(rid)]: epgOutput[str(rid)]['start_next'] = int(epgInput[str(rid)][1]['start'])
 
 
 def parse(m3u8_name, m3u8):
@@ -456,18 +444,16 @@ def parse(m3u8_name, m3u8):
 
 
 def checkLists():
-    global con
+    global con, epgInput
     cur = con.cursor()
     if not (test := cur.execute('SELECT * FROM lists WHERE type="VAVOO"').fetchone()):
         asyncio.ensure_future(getVavoo())
     elif test['last'] == '' or test['last'] == None:
         asyncio.ensure_future(getVavoo())
     else:
-        console.log(str(test['last']))
         htmlBuilder(test['id'])
-    if not (test := cur.execute('SELECT * FROM epg WHERE start < "'+str(int(time.time()))+'" AND end > "'+str(int(time.time()))+'"').fetchone()):
+    if not len(epgInput) > 0:
         asyncio.ensure_future(getEpg())
-    else: epgBuilder()
 
 
 def saveDB():
@@ -491,7 +477,6 @@ def createDB():
     cur = con.cursor()
     cur.execute('CREATE TABLE IF NOT EXISTS lists ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "type" TEXT, "name" TEXT, "url" TEXT, "username" TEXT, "password" TEXT, "last" TEXT)')
     cur.execute('CREATE TABLE IF NOT EXISTS channels ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "lid" INTEGER, "name" TEXT, "group" TEXT, "url" TEXT, "logo" TEXT, "tname" TEXT, "tid" TEXT)')
-    cur.execute('CREATE TABLE IF NOT EXISTS epg ( "id" INTEGER PRIMARY KEY AUTOINCREMENT, "cid" TEXT, "start" INTEGER, "end" INTEGER, "title" TEXT, "desc" TEXT, "lang" TEXT)')
     cur.execute('CREATE TABLE IF NOT EXISTS epgs ( "id" INTEGER PRIMARY KEY AUTOINCREMENT, "rid" TEXT, "mid" TEXT, "mn" TEXT, "tid" TEXT, "tn" TEXT, "display" TEXT, "ol" TEXT, "ml" TEXT, "tl" TEXT, "name" TEXT, "name1" TEXT, "name2" TEXT, "name3" TEXT, "name4" TEXT, "name5" TEXT)')
     con.commit()
     epg = sql.epg
@@ -577,6 +562,58 @@ def writeListToDB(listName, channels):
     htmlBuilder(lid)
 
 
+def playVideo(link):
+    if not (actives := document.querySelectorAll(".active")):
+        console.log('[Play][actives][Error!]')
+        return
+    active1 = active2 = active3 = None
+    for act in actives:
+        if str(act.id) == 's1' or str(act.id) == 's2' or str(act.id) == 'content' or str(act.id) == 'settings': active1 = str(act.id)
+        elif active1 and not active2: active2 = str(act.id)
+        elif active1 and active2 and not active3: active3 = str(act.id)
+        else: break
+    if not active2:
+        console.log('[Active2][NotFound][Error!]')
+        return
+    if not (vid := document.getElementById('video')) or not (act2 := document.querySelector('#'+active2)):
+        console.log('[vid/act2][NotFound][Error!]')
+        return
+    hls = Hls.new()
+    hls.loadSource(link)
+    hls.attachMedia(vid)
+    if not (act2.classList.contains('selected')): act2.classList.add('selected')
+    vid.play()
+
+
+async def resolve_link(link):
+    _data='{"token":"26fY7-FIvyz_UA5t9T_ndXB02KgaCT-jDx0uA9CE7iRAO_V2lCSGkAzzTXOpjHZHBvOoKcuq1OVCnbYX035d8698U0OYDaLo-7p8BJJIJNj7d1z-7byaQDuDFdEHPbnZAKAxG_fskVIrE0XkBV7_HbBnlIBDQ_EgxA","reason":"app-focus","locale":"de","theme":"light","metadata":{"device":{"type":"Handset","brand":"Xiaomi","model":"21081111RG","name":"21081111RG","uniqueId":"33267ca74bec24c7"},"os":{"name":"android","version":"7.1.2","abis":["arm64-v8a","armeabi-v7a","armeabi"],"host":"non-pangu-pod-sbcp6"},"app":{"platform":"android","version":"1.1.2","buildId":"97245000","engine":"jsc","signatures":["7c8c6b5030a8fa447078231e0f2c0d9ee4f24bb91f1bf9599790a1fafbeef7e0"],"installer":"com.android.secex"},"version":{"package":"net.dezor.browser","binary":"1.1.2","js":"1.2.9"}},"appFocusTime":1589,"playerActive":false,"playDuration":0,"devMode":false,"hasMhub":false,"castConnected":false,"package":"net.dezor.browser","version":"1.2.9","process":"app","firstAppStart":1681125328576,"lastAppStart":1681125328576,"ipLocation":null,"adblockEnabled":true,"proxy":{"supported":true,"enabled":true}}'
+    #signed = requests.post("https://www.dezor.net/api/app/ping", data=_data).json()["mhub"]
+    signed = None
+    response = await pyfetch(
+        url="https://www.dezor.net/api/app/ping",
+        method="POST",
+        body=_data
+    )
+    if response.ok:
+        r = await response.json()
+        signed = r["mhub"]
+    if not signed:
+        console.log('[DEZOR][KEY][Error!]')
+        return
+    _headers={"user-agent": "MediaHubMX/2", "accept": "application/json", "content-type": "application/json; charset=utf-8", "content-length": "158", "accept-encoding": "gzip", "Host": "www.kool.to", "mediahubmx-signature":signed}
+    _data={"language":"de","region":"AT","url":link.replace("oha.to/oha-tv", "kool.to/kool-tv").replace("huhu.to/huhu-tv", "kool.to/kool-tv"),"clientVersion":"1.1.3"}
+    response = await pyfetch(
+        url="https://www.kool.to/kool-cluster/mediahubmx-resolve.json",
+        method="POST",
+        headers=_headers,
+        body=json.dumps(_data)
+    )
+    if response.ok:
+        r = await response.json()
+        playVideo(r[0]["url"])
+    return
+
+
 async def getGroups():
     global wsig
     if not wsig:
@@ -600,15 +637,13 @@ async def getGroups():
 
 
 async def getEpg():
-    global con
+    global epgInput, epgIds
     cur = con.cursor()
     epg_channels = []
     epg_ids = {}
     today = datetime.today()
+    dts = datetime.fromtimestamp(int(int(time.time()) - 86400)).strftime("%Y-%m-%d")
     day_to_start = datetime(today.year, today.month, today.day, hour=00, minute=00, second=1)
-    dts = day_to_start
-    dts += timedelta(days=1)
-    dtg = dts.strftime("%Y-%m-%d")
     day_to_grab = day_to_start.strftime("%Y-%m-%d")
 
     async def _get(tid, day):
@@ -634,30 +669,42 @@ async def getEpg():
         if not row['tid'] == None and not row['tid'] == '':
             epg_channels.append(str(row['tid']))
             epg_ids[str(row['tid'])] = str(row['rid'])
+            epgIds.append(row['rid'])
 
     for epg in epg_channels:
-        task = asyncio.ensure_future(_get(epg, day_to_grab))
+        task = asyncio.ensure_future(_get(epg, dts))
         tasks.append(task)
-        task = asyncio.ensure_future(_get(epg, dtg))
+        task = asyncio.ensure_future(_get(epg, day_to_grab))
         tasks.append(task)
 
     response = await asyncio.gather(*tasks)
-    cur.execute('DELETE FROM epg')
-    con.commit()
     for res in response:
         if 'tid' in res:
             rid = epg_ids[str(res['tid'])]
-            for item in res['values']:
-                if 'text' in item: desc = str(item['text']).encode('utf-8')
-                else: desc = ''
-                if 'title' in item: title = str(item['title']).encode('utf-8')
-                else: title = ''
-                end = str(item['timeend'])
-                start = str(item['timestart'])
-                lang = 'DE'
-                cur.execute('INSERT INTO epg VALUES (NULL,"' + str(rid) + '","' + str(start) + '","' + str(end) + '","' + str(title) + '","' + str(desc) + '","' + str(lang) + '")')
-    con.commit()
-    saveDB()
+            if not str(rid) in epgInput: epgInput[str(rid)] = []
+            go = False
+            for val in res['values']:
+                v = {}
+                if go:
+                    v['start'] = int(val['timestart'])
+                    v['end'] = int(val['timeend'])
+                    v['title'] = ''
+                    v['text'] = ''
+                    if 'title' in val: v['title'] = val['title']
+                    if 'text' in val: v['text'] = val['text']
+                    epgInput[str(rid)].append(v)
+                else:
+                    if int(val['timestart']) < int(time.time()) and int(val['timeend']) > int(time.time()):
+                        go = True
+                        v['start'] = int(val['timestart'])
+                        v['end'] = int(val['timeend'])
+                        v['title'] = ''
+                        v['text'] = ''
+                        if 'title' in val: v['title'] = str(val['title'])
+                        if 'text' in val: v['text'] = str(val['text'])
+                        epgInput[str(rid)].append(v)
+    #console.log(str(epgInput))
+    epgBuilder()
 
 
 async def getVavoo():
@@ -682,9 +729,10 @@ async def getVavoo():
             r = await response.json()
             nextCursor = r.get("nextCursor")
             items = json.loads(re.sub('\'', '"', str(r.get("items"))))
-            if nextCursor:
-                task = asyncio.ensure_future(_getchannels(group, nextCursor))
-                tasks.append(task)
+            #if nextCursor:
+                #console.log(str(nextCursor))
+                #task = asyncio.ensure_future(_getchannels(group, nextCursor))
+                #tasks.append(task)
             for item in items:
                 channels.append(json.loads(re.sub('\'', '"', str(item))))
     if not wsig:
@@ -693,8 +741,9 @@ async def getVavoo():
     groups = await getGroups()
     if groups:
         for group in groups:
-            task = asyncio.ensure_future(_getchannels(group))
-            tasks.append(task)
+            for x in range(0, 20):
+                task = asyncio.ensure_future(_getchannels(group, int(x * 300)))
+                tasks.append(task)
         await asyncio.gather(*tasks)
         writeListToDB('VAVOO', channels)
 

@@ -175,10 +175,16 @@
   display: flex;
   flex-direction: column;
   padding: 10px;
+  overflow: hidden;
+  max-height: 304px;
 }
 .main .header .title {
   font-size: 24px;
   color: #fff;
+}
+.main .header .details {
+  max-height: 100px;
+  overflow: hidden;
 }
 .main .header .sub-title {
   display: flex;
@@ -208,6 +214,8 @@
 }
 .card .container {
   padding: 5px;
+  max-height: 140px;
+  overflow: hidden;
 }
 .card .container img {
   width: 100%;
@@ -257,7 +265,8 @@
 .list .hidden {
   display: none;
 }
-.list .item:hover {
+.list .item:hover,
+.list .item.active {
   background-color: #38393b;
   border-radius: 0.8rem;
 }
