@@ -145,7 +145,9 @@ def resolve_link(link):
     _headers={"user-agent": "MediaHubMX/2", "accept": "application/json", "content-type": "application/json; charset=utf-8", "content-length": "158", "accept-encoding": "gzip", "Host": "www.kool.to", "mediahubmx-signature":signed}
     _data={"language":"de","region":"AT","url":link.replace("oha.to/oha-tv", "kool.to/kool-tv").replace("huhu.to/huhu-tv", "kool.to/kool-tv"),"clientVersion":"1.1.3"}
     url = "https://www.kool.to/kool-cluster/mediahubmx-resolve.json"
-    return requests.post(url, data=json.dumps(_data), headers=_headers).json()[0]["url"]
+    resp = requests.post(url, data=json.dumps(_data), headers=_headers)
+    if resp.status_code == 200: return resp.json()[0]["url"]
+    return None
 
 
 def getLinks(action, params):
@@ -432,3 +434,7 @@ def sky_m3u8():
 
     Logger(0, 'Done!', 'm3u8', 'process')
     Logger(9, 'done', 'm3u8', 'process')
+    con0.close()
+    con1.close()
+    con3.close()
+    return True

@@ -149,15 +149,12 @@ def get_cache(key, path=None):
 
 
 def clear_cache():
-    if os.path.exists(dp):
-        import shutil
-        con0.close()
-        con1.close()
-        con2.close()
-        con3.close()
-        shutil.rmtree(dp)
+    import shutil
+    if os.path.exists(cp):
+        shutil.rmtree(cp)
+    if os.path.exists(lp):
+        shutil.rmtree(lp)
     return True
-
 
 
 def clean_tables(item=None):
@@ -310,11 +307,12 @@ def get_setting(name, group=None):
     con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
     con.text_factory = lambda x: unicode(x, errors='ignore')
     cur = con.cursor()
+    data = None
     if name:
         cur.execute('SELECT * FROM settings WHERE name="' + name + '"')
         data = cur.fetchone()
-        if data: return data['value']
     con.close()
+    if data: return data['value']
     return None
 
 
