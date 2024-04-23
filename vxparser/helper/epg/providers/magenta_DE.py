@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys, json, time, requests, requests.adapters, requests.cookies
+import os, sys, json, time, requests, requests.adapters, requests.cookies, sqlite3
 from datetime import datetime, timedelta
 from helper.epg.lib import xml_structure, channel_selector, mapper, filesplit
 from utils.common import Logger as Logger
@@ -8,6 +8,7 @@ import utils.common as com
 provider = 'MAGENTA TV (DE)'
 lang = 'de'
 
+unicode = str
 datapath = com.cp
 temppath = os.path.join(datapath, "temp")
 provider_temppath = os.path.join(temppath, "magentaDE")
@@ -151,12 +152,14 @@ def get_channellist():
         
         ch_title = ''
         epg_channels = []
-        con = com.con
+        con = sqlite3.connect(com.db3)
+        con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
+        con.text_factory = lambda x: unicode(x, errors='ignore')
         cur = con.cursor()
         for row in cur.execute('SELECT * FROM epgs ORDER BY id'):
             if not row["mid"] == None:
                 epg_channels.append(row["mid"])
-        
+        con.close()
         with open(magentaDE_chlist_selected, encoding='utf-8') as selected_list:
             data = json.load(selected_list)
 
@@ -335,12 +338,14 @@ def create_xml_channels():
     #MyADD
     rytec = str(com.get_setting('epg_rytec', 'Vavoo'))
     epg_channels = {}
-    con = com.con
+    con = sqlite3.connect(com.db3)
+    con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
+    con.text_factory = lambda x: unicode(x, errors='ignore')
     cur = con.cursor()
     for row in cur.execute('SELECT * FROM epgs ORDER BY id'):
         if not row["mid"] == None and not row["mid"] == '':
             epg_channels[row["mid"]] = row["rid"]
-
+    con.close()
     for user_item in selected_list['channellist']:
         items += 1
         percent_remain = int(100) - int(items) * int(100) / int(items_to_download)
@@ -387,13 +392,15 @@ def create_xml_broadcast(enable_rating_mapper, thread_temppath, download_threads
     rytec = str(com.get_setting('epg_rytec', 'Vavoo'))
     epg_channels = {}
     epg_ids = {}
-    con = com.con
+    con = sqlite3.connect(com.db3)
+    con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
+    con.text_factory = lambda x: unicode(x, errors='ignore')
     cur = con.cursor()
     for row in cur.execute('SELECT * FROM epgs ORDER BY id'):
         if not row["mid"] == None and not row["mid"] == '':
             epg_channels[row["mid"]] = row["rid"]
             epg_ids[row["mid"]] = row["id"]
-
+    con.close()
     for user_item in selected_list['channellist']:
         items += 1
         percent_remain = int(100) - int(items) * int(100) / int(items_to_download)

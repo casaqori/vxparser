@@ -1,18 +1,20 @@
 import time, os, json, re
 from multiprocessing import Process
+from datetime import timedelta
 from uvicorn import Server, Config
 
 from utils.common import Logger as Logger
+
 import utils.common as com
 import utils.vavoo as vavoo
+import utils.xstream as xstream
 from helper.epg import service as epg
 from api import UvicornServer
 
-#cfg = common.config
 cachepath = com.cp
-jobs = []
+jobs = xstream.jobs
 proc = {}
-proc['api'] = proc['m3u8'] = proc['epg'] = proc['m3u8_p'] = proc['epg_p'] = None
+proc['api'] = proc['m3u8'] = proc['epg'] = proc['m3u8_p'] = proc['epg_p'] = proc['xstream_p'] = None
 procs = [ 'm3u8', 'epg', 'm3u8_p', 'epg_p' ]
 
 
@@ -23,18 +25,18 @@ def handler(typ, name=None):
             port = int(com.get_setting('server_port', 'Main'))
             proc['api'] = UvicornServer(config=Config("api:app", host=ip, port=port, log_level="info", reload=True))
             proc['api'].start()
-            Logger(1, 'Successful started...', 'api', 'service')
+            Logger(1, 'Successful started ...', 'api', 'service')
         elif proc['api']: Logger(1, 'Service allready running ...', 'api', 'service')
         if not proc['m3u8'] and bool(int(com.get_setting('m3u8_service', 'Main'))) == True:
             proc['m3u8'] = Process(target=loop_m3u8)
             proc['m3u8'].start()
-            Logger(1, 'Successful started...', 'm3u8', 'service')
+            Logger(1, 'Successful started ...', 'm3u8', 'service')
         elif proc['m3u8']: Logger(1, 'Service allready running ...', 'm3u8', 'service')
         elif bool(int(com.get_setting('m3u8_service', 'Main'))) == False: Logger(1, 'Service disabled ...', 'm3u8', 'service')
         if not proc['epg'] and bool(int(com.get_setting('epg_service', 'Main'))) == True:
             proc['epg'] = Process(target=loop_epg)
             proc['epg'].start()
-            Logger(1, 'Successful started...', 'epg', 'service')
+            Logger(1, 'Successful started ...', 'epg', 'service')
         elif proc['epg']: Logger(1, 'Service allready running ...', 'epg', 'service')
         elif bool(int(com.get_setting('epg_service', 'Main'))) == False: Logger(1, 'Service disabled ...', 'epg', 'service')
     if typ == 'kill':
@@ -84,7 +86,7 @@ def handler(typ, name=None):
                     proc['m3u8'] = None
             proc['m3u8'] = Process(target=loop_m3u8)
             proc['m3u8'].start()
-            Logger(1, 'Successful started...', 'm3u8', 'service')
+            Logger(1, 'Successful started ...', 'm3u8', 'service')
         else: Logger(1, 'Service disabled ...', 'm3u8', 'service')
         if bool(int(com.get_setting('epg_service', 'Main'))) == True:
             if proc['epg']:
@@ -95,7 +97,7 @@ def handler(typ, name=None):
                     proc['epg'] = None
             proc['epg'] = Process(target=loop_epg)
             proc['epg'].start()
-            Logger(1, 'Successful started...', 'epg', 'service')
+            Logger(1, 'Successful started ...', 'epg', 'service')
         else: Logger(1, 'Service disabled ...', 'epg', 'service')
     if typ == 'epg_start':
         if proc['epg_p']:
@@ -106,7 +108,7 @@ def handler(typ, name=None):
                 proc['epg_p'] = None
         proc['epg_p'] = Process(target=epg.run_grabber)
         proc['epg_p'].start()
-        Logger(1, 'Successful started...', 'epg', 'process')
+        Logger(1, 'Successful started ...', 'epg', 'process')
     if typ == 'm3u8_start':
         if proc['m3u8_p']:
             proc['m3u8_p'].join(timeout=0)
@@ -116,7 +118,17 @@ def handler(typ, name=None):
                 proc['m3u8_p'] = None
         proc['m3u8_p'] = Process(target=vavoo.sky_m3u8)
         proc['m3u8_p'].start()
-        Logger(1, 'Successful started...', 'm3u8', 'process')
+        Logger(1, 'Successful started ...', 'm3u8', 'process')
+    if typ == 'xstream_start':
+        if proc['xstream_p']:
+            proc['xstream_p'].join(timeout=0)
+            if proc['xstream_p'].is_alive():
+                Logger(1, 'terminate ...', 'vods', 'process')
+                proc['xstream_p'].terminate()
+                proc['xstream_p'] = None
+        proc['xstream_p'] = Process(target=xstream.vod_m3u8)
+        proc['xstream_p'].start()
+        Logger(1, 'Successful started ...', 'vods', 'process')
     return
 
 
@@ -129,7 +141,7 @@ def loop_m3u8():
             vavoo.sky_m3u8()
             com.set_setting('m3u8', str(now), 'Loop')
         else:
-            Logger(1, 'sleeping for %s sec...' % str(last + sleep * 60 * 60 - now), 'm3u8', 'service')
+            Logger(1, 'sleeping for %s ...' % timedelta(seconds=int(last + sleep * 60 * 60 - now)), 'm3u8', 'service')
             time.sleep(int(last + sleep * 60 * 60 - now))
     pass
 
@@ -143,7 +155,7 @@ def loop_epg():
             epg.run_grabber()
             com.set_setting('epg', str(now), 'Loop')
         else:
-            Logger(1, 'sleeping for %s sec...' % str(last + sleep * 24 * 60 * 60 - now), 'epg', 'service')
+            Logger(1, 'sleeping for %s ...' % timedelta(seconds=int(last + sleep * 24 * 60 * 60 - now)), 'epg', 'service')
             time.sleep(int(last + sleep * 24 * 60 * 60 - now))
     pass
 

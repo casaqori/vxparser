@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, os, json, requests, urllib3, time, aiohttp, asyncio, re, random
+import sys, os, json, requests, time, aiohttp, asyncio, re, random
 from base64 import b64encode, b64decode 
 from unidecode import unidecode
 from re import search
@@ -8,12 +8,14 @@ import utils.common as com
 import utils.vavoo as vavoo
 
 unicode = str
-urllib3.disable_warnings()
 
 BASEURL = "https://www2.vavoo.to/ccapi/"
 cachepath = os.path.join(com.dp, 'vavoo')
 cp = com.cp
-con = com.con
+con0 = com.con0
+con1 = com.con1
+con2 = com.con2
+con3 = com.con3
 
 if not os.path.exists(cachepath):
     os.makedirs(cachepath)
@@ -76,6 +78,13 @@ def getAuthSignature():
     return sig
 
 
+def log(*args):
+    msg=""
+    for arg in args:
+        msg += repr(arg)
+    print(msg)
+
+
 async def cachedcall(sem, session, action, params):
     #cacheKey = action + "?" + ("&").join([ str(key) + "=" + str(value) for key, value in sorted(list(params.items())) ])
     if action == "list":
@@ -86,6 +95,7 @@ async def cachedcall(sem, session, action, params):
         cacheKey = os.path.join("series", params["id"])
     content = get_cache(cacheKey)
     if content:
+        #log("from Cache: params: %s" % (json.dumps(params)))
         return content
     else:
         async with sem:
@@ -95,11 +105,13 @@ async def cachedcall(sem, session, action, params):
 
 
 async def callApi(session, action, params, method="GET", headers=None, **kwargs):
+    #log("Action:%s params: %s" % (action,json.dumps(params)))
     if not headers: headers = dict()
     headers["auth-token"] = getAuthSignature()
     async with session.request(method, (BASEURL + action), params=params, headers=headers, **kwargs) as resp:
         resp.raise_for_status()
         #data = resp.json()
+        #log("callApi res: %s" % json.dumps(data))
         return await resp.json()
 
 

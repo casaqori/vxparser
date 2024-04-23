@@ -1,4 +1,4 @@
-import time, os, sys, signal, inquirer, asyncio, uvicorn, re
+import time, os, sys, signal, asyncio, uvicorn, re
 from concurrent.futures import ProcessPoolExecutor
 from typing import Union
 from typing_extensions import Annotated
@@ -20,11 +20,14 @@ import utils.user as user
 
 import resolveurl as resolver
 from helper import sites
-import cli, services
+#import cli, services
 
 cachepath = common.cp
 listpath = common.lp
-con = common.con
+con0 = common.con0
+con1 = common.con1
+con2 = common.con2
+con3 = common.con3
 
 common.check()
 
@@ -134,7 +137,7 @@ async def get_post(username: Annotated[str, Form()] = None, password: Annotated[
 async def player_get(username: Union[str, None] = None, password: Union[str, None] = None, action: Union[str, None] = None, vod_id: Union[str, None] = None, series_id: Union[str, None] = None, stream_id: Union[str, None] = None, limit: Union[str, None] = None, category_id: Union[str, None] = None, params: Union[str, None] = None):
     if username is None: username = "nobody"
     if password is None: password = "pass"
-    
+
     user_data = user.auth(username, password)
     if action is None:
         return {
@@ -232,7 +235,7 @@ async def live(username: str, password: str, sid: str, ext: str):
     if password is None: password = "pass"
 
     user_data = user.auth(username, password)
-    cur = con.cursor()
+    cur = con1.cursor()
     cur.execute('SELECT * FROM channel WHERE id="' + sid + '"')
     data = cur.fetchone()
     if str(common.get_setting('xtream_codec')) == 't':
@@ -257,7 +260,7 @@ async def vod(typ: str, username: str, password: str, sid: str, ext: str):
     if password is None: password = "pass"
 
     user_data = user.auth(username, password)
-    cur = con.cursor()
+    cur = con2.cursor()
     cur.execute('SELECT * FROM streams WHERE id="' + sid + '"')
     data = cur.fetchone()
     if not data:
@@ -343,13 +346,13 @@ async def m3u8(m3u8: str, ext: str):
     if os.path.exists(f):
         file = open(f, "rb")
         return StreamingResponse(file)
-    else: 
+    else:
         raise HTTPException(status_code=404, detail="File not found")
 
 
 @app.get("/channel/{sid}", response_class=RedirectResponse, status_code=302)
 async def channel(sid: str):
-    cur = con.cursor()
+    cur = con1.cursor()
     cur.execute('SELECT * FROM channel WHERE id="' + sid + '"')
     data = cur.fetchone()
     sig = vavoo.getAuthSignature()
@@ -362,7 +365,7 @@ async def channel(sid: str):
 
 @app.get("/hls/{sid}", response_class=RedirectResponse, status_code=302)
 async def channel(sid: str):
-    cur = con.cursor()
+    cur = con1.cursor()
     cur.execute('SELECT * FROM channel WHERE id="' + sid + '"')
     data = cur.fetchone()
     if data:
@@ -375,7 +378,7 @@ async def channel(sid: str):
 
 @app.get("/stream/{sid}", response_class=RedirectResponse, status_code=302)
 async def stream(sid: str):
-    cur = con.cursor()
+    cur = con2.cursor()
     cur.execute('SELECT * FROM streams WHERE id="' + sid + '"')
     data = cur.fetchone()
     if not data:
@@ -401,7 +404,7 @@ async def stream(sid: str):
                 except Exception:
                     link = None
             linked[sid] += 1
-            if link is None: 
+            if link is None:
                 notify = Notifications("0.0.0.0")
                 try:
                     await notify.async_connect()

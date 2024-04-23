@@ -8,9 +8,12 @@ import utils.common as com
 datapath = com.cp
 listpath = com.lp
 temppath = os.path.join(com.cp, "temp")
-con = com.con
 
 unicode = str
+db = com.db3
+connection = sqlite3.connect(db)
+connection.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
+connection.text_factory = lambda x: unicode(x, errors='ignore')
 
 now = datetime.now()
 guide_temp = os.path.join(datapath, 'epg.xml')
@@ -19,13 +22,13 @@ guide_dest = os.path.join(listpath, 'epg.xml.gz')
 
 
 def epg_start():
-    cur = con.cursor()
+    cur = connection.cursor()
     cur.execute('DELETE FROM epg')
-    con.commit()
+    connection.commit()
 
 
 def epg_broadcast(cid, item_title, item_date, item_start, item_end, item_description, lang, item_country, item_season, item_episode, item_agerating):
-    cur = con.cursor()
+    cur = connection.cursor()
     desc = ''
     if not item_country == '':
         desc = desc + '(%s) ' % item_country
@@ -46,10 +49,13 @@ def epg_broadcast(cid, item_title, item_date, item_start, item_end, item_descrip
 
     if not item_title == '' and not desc == '':
         cur.execute('INSERT INTO epg VALUES (NULL,"'+str(cid)+'","'+str(item_start)+'","'+str(item_end)+'","'+str(title)+'","'+str(desc)+'","'+str(lang)+'")')
+    #con.commit()
+    #con.close()
 
 
 def epg_end():
-    con.commit()
+    connection.commit()
+    connection.close()
 
 
 def xmltv_start():
@@ -119,6 +125,7 @@ def write_gz():
                 shutil.copyfileobj(f_in, f_out)
         if os.path.exists(guide_dest):
             Logger(0, 'epg.xml.gz successful created!', 'epg')
+            Logger(9, 'done', 'epg', 'process')
         return True
     return False
 

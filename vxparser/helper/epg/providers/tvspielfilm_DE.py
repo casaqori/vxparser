@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import json, os, sys, re, time, requests.cookies, requests.adapters, requests
+import json, os, sys, re, time, requests.cookies, requests.adapters, requests, sqlite3
 from datetime import datetime, timedelta
 from helper.epg.lib import xml_structure, channel_selector, mapper, filesplit
 from utils.common import Logger as Logger
@@ -8,6 +8,7 @@ import utils.common as com
 provider = 'TV SPIELFILM (DE)'
 lang = 'de'
 
+unicode = str
 datapath = com.cp
 temppath = os.path.join(datapath, "temp")
 provider_temppath = os.path.join(temppath, "tvsDE")
@@ -115,12 +116,14 @@ def get_channellist():
         
         ch_title = ''
         epg_channels = [] #"123.tv", "13th Street Universal", "3sat", "Animal Planet", "ANIXE", "ARD alpha", "ARTE", "Auto Motor Sport", "AXN", "Bibel TV", "Bloomberg Europe TV", "BR", "Cartoon Network", "Classica", "Comedy Central", "CRIME + INVESTIGATION", "Das Erste", "DAZN", "DELUXE MUSIC", "Deutsches Musik Fernsehen", "Discovery HD", "Disney Channel", "DMAX", "Eurosport 1", "Eurosport 2", "Fix &amp; Foxi", "Health TV", "Heimatkanal", "History HD", "HR", "HSE24", "Jukebox", "kabel eins", "kabel eins classics", "kabel eins Doku", "KiKA", "KinoweltTV", "K-TV", "MDR", "Motorvision TV", "MTV", "N24 Doku", "Nat Geo HD", "NAT GEO WILD", "NDR", "nick", "Nick Jr.", "Nicktoons", "NITRO", "n-tv", "ONE", "ORF 1", "ORF 2", "ORF III", "ORF SPORT +", "PHOENIX", "ProSieben", "ProSieben Fun", "ProSieben MAXX", "Romance TV", "RTL", "RTL Crime", "RTL II", "RTL Living", "RTL Passion", "RTLplus", "SAT.1", "SAT.1 emotions", "SAT.1 Gold", "ServusTV", "Silverline", "sixx", "Sky Action", "Sky Atlantic HD", "Sky Cinema Best Of", "Sky Cinema Classics", "Sky Cinema Fun", "Sky Cinema Premieren", "Sky Cinema Premieren +24", "Sky Cinema Special HD", "Sky Cinema Thriller", "Sky Family", "Sky Krimi", "Sky One", "Sony Channel", "Spiegel Geschichte", "Spiegel TV Wissen", "SUPER RTL", "SWR/SR", "Syfy", "tagesschau24", "Tele 5", "TLC", "TNT Comedy", "TNT Film", "TNT Serie", "TOGGO plus", "Universal Channel HD", "VOX", "VOXup", "WDR", "ZDF", "ZDFinfo", "ZDFneo" ]
-        con = com.con
+        con = sqlite3.connect(com.db3)
+        con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
+        con.text_factory = lambda x: unicode(x, errors='ignore')
         cur = con.cursor()
         for row in cur.execute('SELECT * FROM epgs ORDER BY id'):
             if not row["tid"] == None:
                 epg_channels.append(row["tid"])
-
+        con.close()
         with open(tvsDE_chlist_selected, encoding='utf-8') as selected_list:
             data = json.load(selected_list)
 
@@ -309,12 +312,14 @@ def create_xml_channels():
     rytec = str(com.get_setting('epg_rytec', 'Vavoo'))
     if rytec == '1':
         epg_channels = {}
-        con = com.con
+        con = sqlite3.connect(com.db3)
+        con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
+        con.text_factory = lambda x: unicode(x, errors='ignore')
         cur = con.cursor()
         for row in cur.execute('SELECT * FROM epgs ORDER BY id'):
             if not row["tid"] == None and not row["tid"] == '':
                 epg_channels[row["tid"]] = row["rid"]
-
+        con.close()
     for user_item in selected_list['channellist']:
         items += 1
         percent_remain = int(100) - int(items) * int(100) / int(items_to_download)
@@ -361,13 +366,15 @@ def create_xml_broadcast(enable_rating_mapper, thread_temppath, download_threads
     rytec = str(com.get_setting('epg_rytec', 'Vavoo'))
     epg_channels = {}
     epg_ids = {}
-    con = com.con
+    con = sqlite3.connect(com.db3)
+    con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
+    con.text_factory = lambda x: unicode(x, errors='ignore')
     cur = con.cursor()
     for row in cur.execute('SELECT * FROM epgs ORDER BY id'):
         if not row["tid"] == None and not row["tid"] == '':
             epg_channels[row["tid"]] = row["rid"]
             epg_ids[row["tid"]] = row["id"]
-
+    con.close()
     for user_item in selected_list['channellist']:
         items += 1
         percent_remain = int(100) - int(items) * int(100) / int(items_to_download)
