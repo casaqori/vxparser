@@ -157,7 +157,7 @@ def clear_cache():
         con3.close()
         shutil.rmtree(dp)
     return True
-    
+
 
 
 def clean_tables(item=None):
@@ -360,7 +360,4 @@ def random_user_agent():
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36",
     ]
     return random.choice(user_agent_pool)
-
-
-
 

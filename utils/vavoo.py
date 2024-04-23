@@ -209,7 +209,7 @@ def sky_m3u8():
     ssl._create_default_https_context = ssl._create_unverified_context
     _headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.100 Safari/537.36', 'Content-Type': 'application/json; charset=utf-8'}
     channel = requests.get('https://www2.vavoo.to/live2/index?output=json', headers=_headers).json()
-    print(channel)
+    #print(channel)
     #req = Request('https://www2.vavoo.to/live2/index?output=json', headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.100 Safari/537.36'})
     #req.add_header('Content-Type', 'application/json; charset=utf-8')
     #response = urlopen(req)
@@ -432,5 +432,3 @@ def sky_m3u8():
 
     Logger(0, 'Done!', 'm3u8', 'process')
     Logger(9, 'done', 'm3u8', 'process')
-
-
