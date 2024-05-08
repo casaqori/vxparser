@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-import platform, sys, json, os, time, inquirer, re, sqlite3
-from multiprocessing import Process, Manager
-#from threading import Thread as Process
+import platform, sys, json, os, time, inquirer, re
+from multiprocessing import Process
 import utils.common as com
 from unidecode import unidecode
 
@@ -10,26 +9,21 @@ from utils.common import Logger as Logger
 import resolveurl as resolver
 from helper import sites
 from helper.tmdb import cTMDB
+import services
 
 cachepath = com.cp
 listpath = com.lp
-jobs = []
+con0 = com.con0
+con1 = com.con1
+con2 = com.con2
+con3 = com.con3
+
+jobs = services.jobs
 
 unicode = str
 
+
 def updateDB(loads):
-    con0 = sqlite3.connect(com.db0)
-    con0.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con0.text_factory = lambda x: unicode(x, errors='ignore')
-    con1 = sqlite3.connect(com.db1)
-    con1.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con1.text_factory = lambda x: unicode(x, errors='ignore')
-    con2 = sqlite3.connect(com.db2)
-    con2.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con2.text_factory = lambda x: unicode(x, errors='ignore')
-    con3 = sqlite3.connect(com.db3)
-    con3.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con3.text_factory = lambda x: unicode(x, errors='ignore')
     cur0 = con0.cursor()
     cur1 = con1.cursor()
     cur2 = con2.cursor()
@@ -162,12 +156,8 @@ def updateDB(loads):
         elif "entries" in loads[0]:
             if "site" in loads[0]["entries"][0]: site = loads[0]["entries"][0]["site"]
     if site == None: site = 'Unknown'
-    Logger(0, 'Database update successful! (%s Site)' % site)
-    Logger(0, 'Infos: %s + Streams: %s (duplicated: Infos: %s + Streams: %s)' %(str(i), str(s), str(n), str(m)))
-    con0.close()
-    con1.close()
-    con2.close()
-    con3.close()
+    Logger(1, 'Database update successful! (%s Site)' % site)
+    Logger(1, 'Infos: %s + Streams: %s (duplicated: Infos: %s + Streams: %s)' %(str(i), str(s), str(n), str(m)))
     return True
 
 
@@ -235,14 +225,10 @@ def getMovies():
         for job in jobs:
             job.join()
     Logger(1, 'All jobs done ...', 'new', 'get')
-    Logger(9, 'done', 'xstream', 'process')
     return True
 
 
 def genLists():
-    con2 = sqlite3.connect(com.db2)
-    con2.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con2.text_factory = lambda x: unicode(x, errors='ignore')
     if os.path.exists(os.path.join(listpath, 'vod.m3u8')):
         os.remove(os.path.join(listpath, 'vod.m3u8'))
     tf = open(os.path.join(listpath, 'vod.m3u8'), "w")
@@ -276,7 +262,6 @@ def genLists():
         j += 1
     tf.close()
     Logger(1, 'series.m3u8 successful created! (%s Items)' % str(j))
-    con2.close()
 
     return True
 

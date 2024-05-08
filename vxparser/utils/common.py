@@ -1,7 +1,7 @@
 import random, os, string, time, socket, sys, sqlite3, json
 from unidecode import unidecode
 
-VERSION = '1.3.5'
+VERSION = '1.3.8'
 unicode = str
 rp = os.path.normpath(os.path.dirname(os.path.abspath(__file__))+'/../')
 
@@ -196,20 +196,20 @@ def check_settings_tables():
         ('server_ip', 'Main', '', 'Server IP for M3U8 List Creation', '', 'text', ''),
         ('server_port', 'Main', '8080', 'Server Port', '8080', 'text', ''),
         ('server_service', 'Main', '1', 'Set Automatic Network IP to Server IP Setting', '1', 'bool', '{"1": "On", "0": "Off"}'),
-        ('m3u8_service', 'Main', '0', 'Automatic M3U8 List Creation for LiveTV als Service', '0', 'bool', '{"1": "On", "0": "Off"}'),
-        ('m3u8_sleep', 'Main', '12', 'Sleep Time for List Creation Service in Stunden', '12', 'text', ''),
+        ('m3u8_service', 'Main', '1', 'Automatic M3U8 List Creation for LiveTV als Service', '1', 'bool', '{"1": "On", "0": "Off"}'),
+        ('m3u8_sleep', 'Main', '96', 'Sleep Time for List Creation Service in Stunden', '96', 'text', ''),
         ('log_lvl', 'Main', '1', 'LogLevel', '1', 'select', '{"1": "Info", "3": "Error"}'),
         ('get_tmdb', 'Main', '0', 'Search in TMDB after VoD & Series Infos', '0', 'bool', '{"1": "On", "0": "Off"}'),
         ('serienstream_username', 'Main', '', 'Username of S.to User Accound', '', 'text', ''),
         ('serienstream_password', 'Main', '', 'Password for S.to User Accound', '', 'text', ''),
-        ('xtream_codec', 'Main', 't', 'Bevorzugter codec für Xtream Codes', 't', 'select', '{"t": "ts", "h": "hls"}'),
+        ('xtream_codec', 'Main', 'h', 'Bevorzugter codec für Xtream Codes', 'h', 'select', '{"t": "ts", "h": "hls"}'),
         ('m3u8', 'Loop', '0', '', '', '', ''),
         ('epg', 'Loop', '0', '', '', '', ''),
         ('osc_port', 'Hidden', '0', '', '', '', ''),
         ('m3u8_hls', 'Vavoo', '1', 'Generate HLS m3u8', '1', 'bool', '{"1": "On", "0": "Off"}'),
         ('m3u8_name', 'Vavoo', '1', 'Vavoo Channel Namen ersetzen', '1', 'bool', '{"1": "On", "0": "Off"}'),
         ('epg_provider', 'Vavoo', 'm', 'Provider to get EPG Infos', 'm', 'select', '{"m": "Magenta", "t": "TvSpielfilme"}'),
-        ('epg_service', 'Vavoo', '0', 'Start epg.xml.gz Creation for LiveTV als Service', '0', 'bool', '{"1": "On", "0": "Off"}'),
+        ('epg_service', 'Vavoo', '1', 'Start epg.xml.gz Creation for LiveTV als Service', '1', 'bool', '{"1": "On", "0": "Off"}'),
         ('epg_sleep', 'Vavoo', '5', 'Sleep Time for epg.xml.gz Creation Service in Tagen', '5', 'text', ''),
         ('epg_grab', 'Vavoo', '7', 'Anzahl an Tagen für epg.xml.gz Erstellung', '7', 'text', ''),
         ('epg_rytec', 'Vavoo', '1', 'Provider IDs mit Rytec ersetzen', '1', 'bool', '{"1": "On", "0": "Off"}'),
@@ -257,24 +257,17 @@ def gen_hash(length=32):
 
 
 def get_setting(name, group=None):
-    con = sqlite3.connect(db0)
-    con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con.text_factory = lambda x: unicode(x, errors='ignore')
-    cur = con.cursor()
+    cur = con0.cursor()
     data = None
     if name:
         cur.execute('SELECT * FROM settings WHERE name="' + name + '"')
         data = cur.fetchone()
-    con.close()
     if data: return data['value']
     return None
 
 
 def set_setting(name, value, group=None):
-    con = sqlite3.connect(db0)
-    con.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con.text_factory = lambda x: unicode(x, errors='ignore')
-    cur = con.cursor()
+    cur = con0.cursor()
     cur.execute('SELECT * FROM settings WHERE name="' + name + '"')
     test = cur.fetchone()
     if test:
@@ -284,8 +277,7 @@ def set_setting(name, value, group=None):
         else: g = 'Hidden'
         row = ( name, g, value, '', '', '', '' )
         cur.execute('INSERT INTO settings VALUES (?,?,?,?,?,?,?)', row)
-    con.commit()
-    con.close()
+    con0.commit()
     return True
 
 

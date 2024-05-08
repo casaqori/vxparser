@@ -39,7 +39,6 @@ def check_channel_dupes():
         dupes = ''.join(dupe)
 
         if (not dupes == ''):
-            log(dupes)
             return False
         else:
             return True
@@ -51,7 +50,6 @@ def run_grabber():
         importlib.reload(tvspielfilm_DE)
         xml_structure.xml_start()
         ## Check Provider , Create XML Channels
-        print("epg_provider: " + str(com.get_setting('epg_provider', 'Vavoo')))
         if str(com.get_setting('epg_provider', 'Vavoo')) == 'm':
             if magenta_DE.startup():
                 magenta_DE.create_xml_channels()

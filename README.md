@@ -12,8 +12,13 @@ IV_LEN = 16
 
 # Update Verlauf:
 
+### Update v.1.3.8:
+- Immer diese fu_ki_g mini fixxes nervt total ^^
+### Update v1.3.7:
+- Datenbank auf gesplittet um database locks zu vermeiden ...
+- api.py added: Http HEAD & OPTIONS function ...
+- Settings changed: m3u8+epg service function set to ON & m3u8 sleep time to 96 & codec set to hls ...
 ### Update v.1.3.5:
-- getrennte Datenbanken damit parallele updates des EPG oder der Listen sich nicht mehr beeinflussen
 - neuer Menüeintrag im cli zum Ausführen der XStream scraper und anschließendem re-generieren der Listen
 ### Update v.1.3.2:
 - epg.xml.gz export bug fixx ... Jetzt läuft's wieder gut ;-)

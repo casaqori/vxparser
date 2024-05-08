@@ -1,18 +1,15 @@
 import time, os, json, re
 from multiprocessing import Process
-from datetime import timedelta
 from uvicorn import Server, Config
 
 from utils.common import Logger as Logger
-
 import utils.common as com
 import utils.vavoo as vavoo
-import utils.xstream as xstream
 from helper.epg import service as epg
 from api import UvicornServer
 
 cachepath = com.cp
-jobs = xstream.jobs
+jobs = []
 proc = {}
 proc['api'] = proc['m3u8'] = proc['epg'] = proc['m3u8_p'] = proc['epg_p'] = proc['xstream_p'] = None
 procs = [ 'm3u8', 'epg', 'm3u8_p', 'epg_p' ]
@@ -141,7 +138,7 @@ def loop_m3u8():
             vavoo.sky_m3u8()
             com.set_setting('m3u8', str(now), 'Loop')
         else:
-            Logger(1, 'sleeping for %s ...' % timedelta(seconds=int(last + sleep * 60 * 60 - now)), 'm3u8', 'service')
+            Logger(1, 'sleeping for %s sec...' % str(last + sleep * 60 * 60 - now), 'm3u8', 'service')
             time.sleep(int(last + sleep * 60 * 60 - now))
     pass
 
@@ -155,7 +152,7 @@ def loop_epg():
             epg.run_grabber()
             com.set_setting('epg', str(now), 'Loop')
         else:
-            Logger(1, 'sleeping for %s ...' % timedelta(seconds=int(last + sleep * 24 * 60 * 60 - now)), 'epg', 'service')
+            Logger(1, 'sleeping for %s sec...' % str(last + sleep * 24 * 60 * 60 - now), 'epg', 'service')
             time.sleep(int(last + sleep * 24 * 60 * 60 - now))
     pass
 

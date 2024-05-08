@@ -6,7 +6,7 @@ from notifications_android_tv import Notifications
 
 from uvicorn import Server, Config
 from fastapi import FastAPI, HTTPException, Request, Response, Body, Form
-from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse, FileResponse
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse, FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 from multiprocessing import Process
 #from threading import Thread as Process
@@ -24,6 +24,7 @@ from helper import sites
 
 cachepath = common.cp
 listpath = common.lp
+rootpath = common.rp
 con0 = common.con0
 con1 = common.con1
 con2 = common.con2
@@ -84,6 +85,8 @@ linked = {}
 
 # API XTREAM-CODES
 ############################################################################################################
+@app.head("/get.php")
+@app.options("/get.php", status_code=201)
 @app.get("/get.php")
 async def get_get(username: Union[str, None] = None, password: Union[str, None] = None, type: Union[str, None] = None, output: Union[str, None] = None):
     if username is None: username = "nobody"
@@ -133,6 +136,8 @@ async def get_post(username: Annotated[str, Form()] = None, password: Annotated[
         raise HTTPException(status_code=404, detail="File not found")
 
 
+@app.head("/player_api.php")
+@app.options("/player_api.php", status_code=201)
 @app.get("/player_api.php")
 async def player_get(username: Union[str, None] = None, password: Union[str, None] = None, action: Union[str, None] = None, vod_id: Union[str, None] = None, series_id: Union[str, None] = None, stream_id: Union[str, None] = None, limit: Union[str, None] = None, category_id: Union[str, None] = None, params: Union[str, None] = None):
     if username is None: username = "nobody"
@@ -201,6 +206,8 @@ async def player_post(username: Annotated[str, Form()] = None, password: Annotat
             return video.get_short_epg(stream_id, limit)
 
 
+@app.head("/panel_api.php")
+@app.options("/panel_api.php", status_code=201)
 @app.get("/panel_api.php")
 async def panel_get(username: Union[str, None] = None, password: Union[str, None] = None, action: Union[str, None] = None):
     if username is None: username = "nobody"
@@ -249,6 +256,7 @@ async def live(username: str, password: str, sid: str, ext: str):
         if data:
             link = vavoo.resolve_link(data['hls'])
             if link:
+                Logger(9, "playing: %s" str(link))
                 return link
             else: raise HTTPException(status_code=404, detail="Stream not found")
         else: raise HTTPException(status_code=404, detail="Stream not found")
@@ -304,6 +312,8 @@ async def vod(typ: str, username: str, password: str, sid: str, ext: str):
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
+@app.head("/xmltv.php")
+@app.options("/xmltv.php", status_code=201)
 @app.get("/xmltv.php")
 async def epg(username: str, password: str):
     if username is None: username = "nobody"
@@ -321,15 +331,8 @@ async def epg(username: str, password: str):
 
 # VAVOO API
 ############################################################################################################
-@app.get("/")
-async def root(response: Response):
-    data = ''
-    listdir = os.listdir(listpath)
-    for l in listdir:
-        data += '<a href="'+l+'">'+l+'</a><br>'
-    return Response(content=data, media_type="text/html")
-
-
+@app.head("/epg.xml.gz")
+@app.options("/epg.xml.gz", status_code=201)
 @app.get("/epg.xml.gz", response_class=RedirectResponse, status_code=302)
 async def gz():
     f = os.path.join(listpath, 'epg.xml.gz')
@@ -340,8 +343,10 @@ async def gz():
         raise HTTPException(status_code=404, detail="File not found")
 
 
-@app.get("/{m3u8}.{ext}", response_class=RedirectResponse, status_code=302)
-async def m3u8(m3u8: str, ext: str):
+@app.head("/{m3u8}.m3u8")
+@app.options("/{m3u8}.m3u8", status_code=201)
+@app.get("/{m3u8}.m3u8", response_class=RedirectResponse, status_code=302)
+async def m3u8(m3u8: str):
     f = os.path.join(listpath, m3u8+'.m3u8')
     if os.path.exists(f):
         file = open(f, "rb")
@@ -350,6 +355,8 @@ async def m3u8(m3u8: str, ext: str):
         raise HTTPException(status_code=404, detail="File not found")
 
 
+@app.head("/channel/{sid}")
+@app.options("/channel/{sid}", status_code=201)
 @app.get("/channel/{sid}", response_class=RedirectResponse, status_code=302)
 async def channel(sid: str):
     cur = con1.cursor()
@@ -363,6 +370,8 @@ async def channel(sid: str):
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
+@app.head("/hls/{sid}")
+@app.options("/hls/{sid}", status_code=201)
 @app.get("/hls/{sid}", response_class=RedirectResponse, status_code=302)
 async def channel(sid: str):
     cur = con1.cursor()
@@ -371,11 +380,14 @@ async def channel(sid: str):
     if data:
         link = vavoo.resolve_link(data['hls'])
         if link:
+            Logger(9, "playing: %s" str(link))
             return link
         else: raise HTTPException(status_code=404, detail="Stream not found")
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
+@app.head("/stream/{sid}")
+@app.options("/stream/{sid}", status_code=201)
 @app.get("/stream/{sid}", response_class=RedirectResponse, status_code=302)
 async def stream(sid: str):
     cur = con2.cursor()
@@ -417,4 +429,25 @@ async def stream(sid: str):
             linked[sid] = 0
             return
     else: raise HTTPException(status_code=404, detail="Stream not found")
+
+
+@app.get("/{name}.{ext}")
+async def main(name: str, ext: str):
+    if os.path.exists(os.path.join(rootpath, name+'.'+ext)):
+        f = os.path.join(rootpath, name+'.'+ext)
+    elif os.path.exists(os.path.join(rootpath, 'html', name+'.'+ext)):
+        f = os.path.join(rootpath, 'html', name+'.'+ext)
+    else: raise HTTPException(status_code=404, detail="Stream not found")
+    return FileResponse(f)
+
+
+@app.head("/")
+@app.options("/", status_code=201)
+@app.get("/")
+async def root(response: Response, response_class=HTMLResponse):
+    data = ''
+    listdir = os.listdir(listpath)
+    for l in listdir:
+        data += '<a href="'+l+'">'+l+'</a><br>'
+    return HTMLResponse(content=data, status_code=200)
 

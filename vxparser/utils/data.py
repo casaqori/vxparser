@@ -78,13 +78,6 @@ def getAuthSignature():
     return sig
 
 
-def log(*args):
-    msg=""
-    for arg in args:
-        msg += repr(arg)
-    print(msg)
-
-
 async def cachedcall(sem, session, action, params):
     #cacheKey = action + "?" + ("&").join([ str(key) + "=" + str(value) for key, value in sorted(list(params.items())) ])
     if action == "list":
@@ -95,7 +88,6 @@ async def cachedcall(sem, session, action, params):
         cacheKey = os.path.join("series", params["id"])
     content = get_cache(cacheKey)
     if content:
-        #log("from Cache: params: %s" % (json.dumps(params)))
         return content
     else:
         async with sem:
@@ -105,13 +97,11 @@ async def cachedcall(sem, session, action, params):
 
 
 async def callApi(session, action, params, method="GET", headers=None, **kwargs):
-    #log("Action:%s params: %s" % (action,json.dumps(params)))
     if not headers: headers = dict()
     headers["auth-token"] = getAuthSignature()
     async with session.request(method, (BASEURL + action), params=params, headers=headers, **kwargs) as resp:
         resp.raise_for_status()
         #data = resp.json()
-        #log("callApi res: %s" % json.dumps(data))
         return await resp.json()
 
 

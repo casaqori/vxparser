@@ -1,4 +1,4 @@
-import requests, random, sys, os, json, time, re, base64, codecs, threading, gzip, ssl, signal, sqlite3
+import requests, random, sys, os, json, time, re, base64, codecs, threading, gzip, ssl, signal
 from base64 import b64encode, b64decode
 from time import sleep
 from datetime import date, datetime
@@ -15,6 +15,9 @@ session = requests.session()
 BASEURL = "https://www2.vavoo.to/ccapi/"
 
 cachepath = com.cp
+con0 = com.con0
+con1 = com.con1
+con3 = com.con3
 _path = com.lp
 
 
@@ -195,15 +198,6 @@ def sky_m3u8():
     m3u8_name = com.get_setting('m3u8_name')
     epg_provider = com.get_setting('epg_provider')
 
-    con0 = sqlite3.connect(com.db0)
-    con0.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con0.text_factory = lambda x: unicode(x, errors='ignore')
-    con1 = sqlite3.connect(com.db1)
-    con1.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con1.text_factory = lambda x: unicode(x, errors='ignore')
-    con3 = sqlite3.connect(com.db3)
-    con3.row_factory = lambda c, r: dict([(col[0], r[idx]) for idx, col in enumerate(c.description)])
-    con3.text_factory = lambda x: unicode(x, errors='ignore')
     cur0 = con0.cursor()
     cur1 = con1.cursor()
     cur3 = con3.cursor()
@@ -211,12 +205,6 @@ def sky_m3u8():
     ssl._create_default_https_context = ssl._create_unverified_context
     _headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.100 Safari/537.36', 'Content-Type': 'application/json; charset=utf-8'}
     channel = requests.get('https://www2.vavoo.to/live2/index?output=json', headers=_headers).json()
-    #print(channel)
-    #req = Request('https://www2.vavoo.to/live2/index?output=json', headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.100 Safari/537.36'})
-    #req.add_header('Content-Type', 'application/json; charset=utf-8')
-    #response = urlopen(req)
-    #content = response.read().decode('utf8')
-    #channel = json.loads(content)
 
     for c in channel:
         url = c['url']
@@ -430,11 +418,7 @@ def sky_m3u8():
                 tf.write('\n%s/hls/%s' % (hurl, row['id']))
                 tf.close()
             else:
-                Logger(2, 'Warning!', 'm3u8', 'process')
+                Logger(3, 'Error!', 'm3u8', 'process')
 
     Logger(0, 'Done!', 'm3u8', 'process')
-    Logger(9, 'done', 'm3u8', 'process')
-    con0.close()
-    con1.close()
-    con3.close()
     return True
