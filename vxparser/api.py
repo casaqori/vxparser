@@ -477,7 +477,7 @@ def root():
 @app.head("/video/{sid}")
 @app.options("/video/{sid}", status_code=204)
 @app.get("/video/{sid}", response_class=HTMLResponse, status_code=200)
-async def video(sid: str):
+async def videoplayer(sid: str):
     # TODO streaming requires video.js hls-player and dynamic proxy-routing capabilities
     content = f"""
 <body>
