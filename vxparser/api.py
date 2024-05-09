@@ -97,7 +97,7 @@ linked = {}
 # API XTREAM-CODES
 ############################################################################################################
 @app.head("/get.php")
-@app.options("/get.php", status_code=201)
+@app.options("/get.php", status_code=204)
 @app.get("/get.php")
 async def get_get(username: Union[str, None] = None, password: Union[str, None] = None, type: Union[str, None] = None, output: Union[str, None] = None):
     if username is None: username = "nobody"
@@ -117,7 +117,7 @@ async def get_get(username: Union[str, None] = None, password: Union[str, None] 
         file = open(of, "rb")
         if typ == 'm3u8_plus': headers = {'Content-Disposition': 'attachment; filename="tv_channels_%s_plus.m3u"' % username, 'Content-Description': 'File Transfer'}
         else: headers = {'Content-Disposition': 'attachment; filename="tv_channels_%s.m3u"' % username, 'Content-Description': 'File Transfer'}
-        return StreamingResponse(file, headers=headers, media_type="application/octet-stream")
+        return StreamingResponse(file, headers=headers, media_type="application/vnd.apple.mpegurl; charset=utf-8")
     else:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -142,13 +142,13 @@ async def get_post(username: Annotated[str, Form()] = None, password: Annotated[
         file = open(of, "rb")
         if typ == 'm3u8': headers = {'Content-Disposition': 'attachment; filename="tv_channels_%s_plus.m3u"' % username, 'Content-Description': 'File Transfer'}
         else: headers = {'Content-Disposition': 'attachment; filename="tv_channels_%s.m3u"' % username, 'Content-Description': 'File Transfer'}
-        return StreamingResponse(file, headers=headers, media_type="application/octet-stream")
+        return StreamingResponse(file, headers=headers, media_type="application/vnd.apple.mpegurl; charset=utf-8")
     else:
         raise HTTPException(status_code=404, detail="File not found")
 
 
 @app.head("/player_api.php")
-@app.options("/player_api.php", status_code=201)
+@app.options("/player_api.php", status_code=204)
 @app.get("/player_api.php")
 async def player_get(username: Union[str, None] = None, password: Union[str, None] = None, action: Union[str, None] = None, vod_id: Union[str, None] = None, series_id: Union[str, None] = None, stream_id: Union[str, None] = None, limit: Union[str, None] = None, category_id: Union[str, None] = None, params: Union[str, None] = None):
     if username is None: username = "nobody"
@@ -218,7 +218,7 @@ async def player_post(username: Annotated[str, Form()] = None, password: Annotat
 
 
 @app.head("/panel_api.php")
-@app.options("/panel_api.php", status_code=201)
+@app.options("/panel_api.php", status_code=204)
 @app.get("/panel_api.php")
 async def panel_get(username: Union[str, None] = None, password: Union[str, None] = None, action: Union[str, None] = None):
     if username is None: username = "nobody"
@@ -247,6 +247,8 @@ async def panel_post(username: Annotated[str, Form()] = None, password: Annotate
     }
 
 
+@app.head("/live/{any_path:path}")
+@app.options("/live/{any_path:path}", status_code=204)
 @app.get("/live/{username}/{password}/{sid}.{ext}", response_class=StreamingResponse)
 async def live(request: Request, username: str, password: str, sid: str, ext: str):
     if username is None: username = "nobody"
@@ -272,6 +274,8 @@ async def live(request: Request, username: str, password: str, sid: str, ext: st
         else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
+@app.head("/{typ}/{any_path:path}")
+@app.options("/{typ}/{any_path:path}", status_code=204)
 @app.get("/{typ}/{username}/{password}/{sid}.{ext}", response_class=StreamingResponse)
 async def vod(request: Request, typ: str, username: str, password: str, sid: str, ext: str):
     if username is None: username = "nobody"
@@ -323,7 +327,7 @@ async def vod(request: Request, typ: str, username: str, password: str, sid: str
 
 
 @app.head("/xmltv.php")
-@app.options("/xmltv.php", status_code=201)
+@app.options("/xmltv.php", status_code=204)
 @app.get("/xmltv.php")
 async def epg(username: str, password: str):
     if username is None: username = "nobody"
@@ -342,7 +346,7 @@ async def epg(username: str, password: str):
 # VAVOO API
 ############################################################################################################
 @app.head("/epg.xml.gz")
-@app.options("/epg.xml.gz", status_code=201)
+@app.options("/epg.xml.gz", status_code=204)
 @app.get("/epg.xml.gz", response_class=StreamingResponse, status_code=200)
 def gz():
     f = os.path.join(listpath, 'epg.xml.gz')
@@ -356,20 +360,21 @@ def gz():
 
 
 @app.head("/{m3u8}.m3u8")
-@app.options("/{m3u8}.m3u8", status_code=201)
+@app.options("/{m3u8}.m3u8", status_code=204)
 @app.get("/{m3u8}.m3u8", response_class=StreamingResponse, status_code=200)
 def m3u8(m3u8: str):
     f = os.path.join(listpath, m3u8+'.m3u8')
     if os.path.exists(f):
+        playlisttyp = "application/vnd.apple.mpegurl; charset=utf-8" if m3u8.endswith("_hls") else "application/octet-stream"
         def iterfile():
             with open(f, mode="rb") as file_like:
                 yield from file_like
-        return StreamingResponse(iterfile(), media_type="application/vnd.apple.mpegurl; charset=utf-8")
+        return StreamingResponse(iterfile(), media_type=playlisttyp)
     else:
         raise HTTPException(status_code=404, detail="File not found")
 
 @app.head("/channel/{sid}")
-@app.options("/channel/{sid}", status_code=201)
+@app.options("/channel/{sid}", status_code=204)
 @app.get("/channel/{sid}", response_class=StreamingResponse)
 async def channel(request: Request, sid: str):
     cur = con1.cursor()
@@ -384,7 +389,7 @@ async def channel(request: Request, sid: str):
 
 
 @app.head("/hls/{sid}")
-@app.options("/hls/{sid}", status_code=201)
+@app.options("/hls/{sid}", status_code=204)
 @app.get("/hls/{sid}", response_class=StreamingResponse)
 async def channel(request: Request, sid: str):
     cur = con1.cursor()
@@ -399,7 +404,7 @@ async def channel(request: Request, sid: str):
 
 
 @app.head("/stream/{sid}")
-@app.options("/stream/{sid}", status_code=201)
+@app.options("/stream/{sid}", status_code=204)
 @app.get("/stream/{sid}", response_class=StreamingResponse)
 async def stream(request: Request, sid: str):
     cur = con2.cursor()
@@ -443,8 +448,11 @@ async def stream(request: Request, sid: str):
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
+@app.head("/{name}.{ext}")
+@app.options("/{name}.{ext}", status_code=204)
 @app.get("/{name}.{ext}", response_class=FileResponse, status_code=200)
 def main(name: str, ext: str):
+    # https://fastapi.tiangolo.com/tutorial/static-files/
     if os.path.exists(os.path.join(rootpath, name+'.'+ext)):
         f = os.path.join(rootpath, name+'.'+ext)
     elif os.path.exists(os.path.join(rootpath, 'html', name+'.'+ext)):
@@ -454,7 +462,7 @@ def main(name: str, ext: str):
 
 
 @app.head("/")
-@app.options("/", status_code=201)
+@app.options("/", status_code=204)
 @app.get("/", response_class=HTMLResponse, status_code=200)
 def root():
     data = ''
@@ -463,3 +471,15 @@ def root():
         data += '<a href="'+l+'">'+l+'</a><br>'
     return data
 
+
+@app.head("/video/{sid}")
+@app.options("/video/{sid}", status_code=204)
+@app.get("/video/{sid}", response_class=HTMLResponse, status_code=200)
+async def video(sid: str):
+    # TODO streaming requires video.js player
+    content = f"""
+<body>
+<video controls width="1280px" height="720px" preload="none" src="/hls/{sid}" />
+</body>
+    """
+    return content

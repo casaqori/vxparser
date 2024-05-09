@@ -56,12 +56,13 @@ def _change_client_header(
     """
     new_headers = headers.mutablecopy()
     new_headers["host"] = target_url.netloc.decode("ascii")
+    new_headers["connection"] = "keep-alive"
     if "Cookie" not in new_headers:  # case-insensitive
         new_headers["Cookie"] = ""
-
-    new_headers["connection"] = "keep-alive"
     if "keep-alive" in new_headers:
         del new_headers["keep-alive"]
+    if "origin" in new_headers:
+        del new_headers["origin"] # remove browser traces
 
     return new_headers
 
@@ -173,7 +174,7 @@ class ForwardHttpProxy():
         first_path_param: str = (next(iter(request.path_params.values()), ""))
 
         if "vavoo_auth" in target_url.query:
-            proxy_header['User-Agent'] = 'VAVOO/2.6'
+            proxy_header["User-Agent"] = "VAVOO/2.6"
 
         self.client.cookies.clear()
 
@@ -185,8 +186,9 @@ class ForwardHttpProxy():
             content=None,
         )
 
-        Logger(9, "proxying: client:%s ; url:%s ; head:%s" %(
+        Logger(9, "proxying: client:%s ; clienthead: %s, url:%s ; head:%s" %(
             self.client
+            request.headers
             proxy_request.url
             proxy_request.headers)
         )
@@ -201,6 +203,13 @@ class ForwardHttpProxy():
         tasks.add_task(proxy_response.aclose)
 
         proxy_response_headers = _change_server_header(headers=proxy_response.headers)
+        client_origin = "*"
+        if "origin" in request.headers:
+            client_origin = request.headers["origin"]
+        proxy_response_headers.update({"Access-Control-Allow-Origin": client_origin})
+        proxy_response_headers.update({"Access-Control-Allow-Methods": request.method})
+        proxy_response_headers.update({"Access-Control-Allow-Headers": "*"})
+        proxy_response_headers.update({"Access-Control-Max-Age": "86400"})
 
         return StreamingResponse(
             content=proxy_response.aiter_raw(),
