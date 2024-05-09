@@ -22,7 +22,7 @@ import utils.user as user
 
 import resolveurl as resolver
 from helper import sites
-from proxy import ForwardHttpProxy
+from helper.proxy import ForwardHttpProxy
 
 cachepath = common.cp
 listpath = common.lp
