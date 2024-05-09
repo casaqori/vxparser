@@ -7,6 +7,8 @@ from notifications_android_tv import Notifications
 from uvicorn import Server, Config
 from fastapi import FastAPI, HTTPException, Request, Response, Body, Form
 from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse, FileResponse, HTMLResponse, PlainTextResponse
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 from pydantic import BaseModel
 from multiprocessing import Process
 #from threading import Thread as Process
@@ -20,7 +22,7 @@ import utils.user as user
 
 import resolveurl as resolver
 from helper import sites
-#import cli, services
+from proxy import ForwardHttpProxy
 
 cachepath = common.cp
 listpath = common.lp
@@ -45,8 +47,17 @@ class UvicornServer(Process):
         server = Server(config=self.config)
         server.run()
 
+proxy = ForwardHttpProxy()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    # Init
+    application.state.aGlobaVar = "request.app.state.aGlobaVar"
+    yield # Run
+    # Stop
+    await proxy.aclose()
+
+app = FastAPI(lifespan=lifespan)
 links = {}
 linked = {}
 
@@ -236,8 +247,8 @@ async def panel_post(username: Annotated[str, Form()] = None, password: Annotate
     }
 
 
-@app.get("/live/{username}/{password}/{sid}.{ext}", response_class=RedirectResponse, status_code=302)
-async def live(username: str, password: str, sid: str, ext: str):
+@app.get("/live/{username}/{password}/{sid}.{ext}", response_class=StreamingResponse)
+async def live(request: Request, username: str, password: str, sid: str, ext: str):
     if username is None: username = "nobody"
     if password is None: password = "pass"
 
@@ -250,20 +261,19 @@ async def live(username: str, password: str, sid: str, ext: str):
         if data and sig:
             url = str(data['url'])
             link = url + '?n=1&b=5&vavoo_auth=' + sig
-            return link
+            return await proxy.stream(request=request, stream_url=link)
         else: raise HTTPException(status_code=404, detail="Stream not found")
     else:
         if data:
             link = vavoo.resolve_link(data['hls'])
             if link:
-                Logger(9, "playing: %s" str(link))
-                return link
+                return await proxy.stream(request=request, stream_url=link)
             else: raise HTTPException(status_code=404, detail="Stream not found")
         else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
-@app.get("/{typ}/{username}/{password}/{sid}.{ext}", response_class=RedirectResponse, status_code=302)
-async def vod(typ: str, username: str, password: str, sid: str, ext: str):
+@app.get("/{typ}/{username}/{password}/{sid}.{ext}", response_class=StreamingResponse)
+async def vod(request: Request, typ: str, username: str, password: str, sid: str, ext: str):
     if username is None: username = "nobody"
     if password is None: password = "pass"
 
@@ -305,7 +315,7 @@ async def vod(typ: str, username: str, password: str, sid: str, ext: str):
                 raise HTTPException(status_code=404, detail="Link (%s/%s) not found" %(str(linked[sid][username]), str(len(links[sid]))))
             elif "voe" in link.lower():
                 link = re.sub('\|User-Agent=.*', '', link)
-            return link
+            return await proxy.stream(request=request, stream_url=link)
         elif len(links[sid]) > 1:
             linked[sid][username] = 0
             return
@@ -333,32 +343,35 @@ async def epg(username: str, password: str):
 ############################################################################################################
 @app.head("/epg.xml.gz")
 @app.options("/epg.xml.gz", status_code=201)
-@app.get("/epg.xml.gz", response_class=RedirectResponse, status_code=302)
-async def gz():
+@app.get("/epg.xml.gz", response_class=StreamingResponse, status_code=200)
+def gz():
     f = os.path.join(listpath, 'epg.xml.gz')
     if os.path.exists(f):
-        file = open(f, "rb")
-        return StreamingResponse(file)
+        def iterfile():
+            with open(f, mode="rb") as file_like:
+                yield from file_like
+        return StreamingResponse(iterfile(), media_type="application/gzip")
     else:
         raise HTTPException(status_code=404, detail="File not found")
 
 
 @app.head("/{m3u8}.m3u8")
 @app.options("/{m3u8}.m3u8", status_code=201)
-@app.get("/{m3u8}.m3u8", response_class=RedirectResponse, status_code=302)
-async def m3u8(m3u8: str):
+@app.get("/{m3u8}.m3u8", response_class=StreamingResponse, status_code=200)
+def m3u8(m3u8: str):
     f = os.path.join(listpath, m3u8+'.m3u8')
     if os.path.exists(f):
-        file = open(f, "rb")
-        return StreamingResponse(file)
+        def iterfile():
+            with open(f, mode="rb") as file_like:
+                yield from file_like
+        return StreamingResponse(iterfile(), media_type="application/vnd.apple.mpegurl; charset=utf-8")
     else:
         raise HTTPException(status_code=404, detail="File not found")
 
-
 @app.head("/channel/{sid}")
 @app.options("/channel/{sid}", status_code=201)
-@app.get("/channel/{sid}", response_class=RedirectResponse, status_code=302)
-async def channel(sid: str):
+@app.get("/channel/{sid}", response_class=StreamingResponse)
+async def channel(request: Request, sid: str):
     cur = con1.cursor()
     cur.execute('SELECT * FROM channel WHERE id="' + sid + '"')
     data = cur.fetchone()
@@ -366,30 +379,29 @@ async def channel(sid: str):
     if data and sig:
         url = str(data['url'])
         link = url + '?n=1&b=5&vavoo_auth=' + sig
-        return link
+        return await proxy.stream(request=request, stream_url=link)
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
 @app.head("/hls/{sid}")
 @app.options("/hls/{sid}", status_code=201)
-@app.get("/hls/{sid}", response_class=RedirectResponse, status_code=302)
-async def channel(sid: str):
+@app.get("/hls/{sid}", response_class=StreamingResponse)
+async def channel(request: Request, sid: str):
     cur = con1.cursor()
     cur.execute('SELECT * FROM channel WHERE id="' + sid + '"')
     data = cur.fetchone()
     if data:
         link = vavoo.resolve_link(data['hls'])
         if link:
-            Logger(9, "playing: %s" str(link))
-            return link
+            return await proxy.stream(request=request, stream_url=link)
         else: raise HTTPException(status_code=404, detail="Stream not found")
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
 @app.head("/stream/{sid}")
 @app.options("/stream/{sid}", status_code=201)
-@app.get("/stream/{sid}", response_class=RedirectResponse, status_code=302)
-async def stream(sid: str):
+@app.get("/stream/{sid}", response_class=StreamingResponse)
+async def stream(request: Request, sid: str):
     cur = con2.cursor()
     cur.execute('SELECT * FROM streams WHERE id="' + sid + '"')
     data = cur.fetchone()
@@ -424,30 +436,30 @@ async def stream(sid: str):
                 except Exception:
                     Logger(1, "Link (%s/%s) not found" %(str(linked[sid]), str(len(links[sid]))))
                 raise HTTPException(status_code=404, detail="Link (%s/%s) not found" %(str(linked[sid]), str(len(links[sid]))))
-            return link
+            return await proxy.stream(request=request, stream_url=link)
         elif len(links[sid]) > 1:
             linked[sid] = 0
             return
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
-@app.get("/{name}.{ext}")
-async def main(name: str, ext: str):
+@app.get("/{name}.{ext}", response_class=FileResponse, status_code=200)
+def main(name: str, ext: str):
     if os.path.exists(os.path.join(rootpath, name+'.'+ext)):
         f = os.path.join(rootpath, name+'.'+ext)
     elif os.path.exists(os.path.join(rootpath, 'html', name+'.'+ext)):
         f = os.path.join(rootpath, 'html', name+'.'+ext)
-    else: raise HTTPException(status_code=404, detail="Stream not found")
-    return FileResponse(f)
+    else: raise HTTPException(status_code=404, detail="File not found")
+    return f
 
 
 @app.head("/")
 @app.options("/", status_code=201)
-@app.get("/")
-async def root(response: Response, response_class=HTMLResponse):
+@app.get("/", response_class=HTMLResponse, status_code=200)
+def root():
     data = ''
     listdir = os.listdir(listpath)
     for l in listdir:
         data += '<a href="'+l+'">'+l+'</a><br>'
-    return HTMLResponse(content=data, status_code=200)
+    return data
 
