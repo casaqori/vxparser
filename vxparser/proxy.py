@@ -36,7 +36,7 @@ When:
 
 
 def _change_client_header(
-    *, headers: StarletteHeaders, target_url: httpx.URL
+    headers: StarletteHeaders, target_url: httpx.URL,
 ) -> StarletteMutableHeaders:
     """Change client request headers for sending to proxy server.
 
@@ -62,12 +62,19 @@ def _change_client_header(
     if "keep-alive" in new_headers:
         del new_headers["keep-alive"]
     if "origin" in new_headers:
-        del new_headers["origin"] # remove browser traces
+        del new_headers["origin"] # skip CORS
+    if "upgrade-insecure-requests" in new_headers:
+        del new_headers["upgrade-insecure-requests"] # skip HTTPS
+    # remove traces
+    if "referer" in new_headers:
+        del new_headers["referer"]
+    if "accept-language" in new_headers:
+        new_headers["accept-language"] = "en"
 
     return new_headers
 
 def _change_server_header(
-    *, headers: httpx.Headers
+    headers: httpx.Headers,
 ) -> httpx.Headers:
     """Change server response headers for sending to client.
 
@@ -83,6 +90,11 @@ def _change_server_header(
         del headers["connection"]
     if "keep-alive" in headers:
         del headers["keep-alive"]
+     # re-added by Uvicorn
+    if "server" in headers:
+        del headers["server"]
+    if "date" in headers:
+        del headers["date"]
 
     return headers
 
@@ -95,11 +107,11 @@ class ForwardHttpProxy():
         follow_redirects: Whether follow redirects of proxy server.
     """
 
-    client: AsyncClient
+    client: httpx.AsyncClient
     follow_redirects: bool
 
     def __init__(
-        self, client: AsyncClient = None, *, follow_redirects: bool = False
+        self, client: httpx.AsyncClient = None, follow_redirects: bool = True,
     ) -> None:
         """Forward http proxy.
 
@@ -107,14 +119,14 @@ class ForwardHttpProxy():
             client: The httpx.AsyncClient to send http requests. Defaults to None.
                 if None, will create a new httpx.AsyncClient configured for streaming,
                 else will use the given httpx.AsyncClient.
-            follow_redirects: Whether follow redirects of proxy server. Defaults to False.
+            follow_redirects: Whether follow redirects of proxy server. Defaults to True.
         """
-        self.client = client if client is not None else AsyncClient(verify=False, timeout=None, trust_env=False)
+
+        self.client = client if client is not None else httpx.AsyncClient(verify=False, timeout=None, trust_env=False)
         self.follow_redirects = follow_redirects
 
     async def stream(
         self,
-        *,
         request: StarletteRequest,
         stream_url: str,
     ) -> StarletteResponse:
@@ -138,7 +150,7 @@ class ForwardHttpProxy():
 
         try:
             return await self.send_request_to_target(
-                request=request, target_url=target_url
+                request=request, target_url=target_url,
             )
         except _400_ERROR_NEED_TO_BE_CATCHED_IN_FORWARD_PROXY as e:
             return JSONResponse(
@@ -153,7 +165,6 @@ class ForwardHttpProxy():
 
     async def send_request_to_target(
         self,
-        *,
         request: StarletteRequest,
         target_url: httpx.URL,
     ) -> StarletteResponse:
@@ -168,16 +179,15 @@ class ForwardHttpProxy():
         """
 
         proxy_header = _change_client_header(
-            headers=request.headers, target_url=target_url
+            headers=request.headers, target_url=target_url,
         )
 
-        first_path_param: str = (next(iter(request.path_params.values()), ""))
-
-        if "vavoo_auth" in target_url.query:
-            proxy_header["User-Agent"] = "VAVOO/2.6"
+        if b"vavoo_auth" in target_url.query:
+            proxy_header["user-agent"] = "VAVOO/2.6"
 
         self.client.cookies.clear()
 
+        # https://www.python-httpx.org/compatibility/
         proxy_request = self.client.build_request(
             method=request.method,
             url=target_url,
@@ -186,11 +196,12 @@ class ForwardHttpProxy():
             content=None,
         )
 
-        Logger(9, "proxying: client:%s ; clienthead: %s, url:%s ; head:%s" %(
-            self.client
-            request.headers
-            proxy_request.url
-            proxy_request.headers)
+        Logger(9, "proxying: clienttimeout:%s ; clienthead:%s, url:%s ; head:%s" %(
+            self.client.timeout,
+            request.headers,
+            str(proxy_request.url),
+            proxy_request.headers,
+            )
         )
 
         proxy_response = await self.client.send(
@@ -202,6 +213,18 @@ class ForwardHttpProxy():
         tasks = BackgroundTasks()
         tasks.add_task(proxy_response.aclose)
 
+        if proxy_response.status_code == 302:
+            Logger(3, "Warn - follow_redirects=False reveals your privacy!", "proxy")
+            if "cloudflare" in proxy_response.headers["server"]:
+                Logger(9, "CLOUDFARE_PROTECTED_RESOURCE: %s" %(proxy_response.headers["location"]))
+            # manually handle (maybe repeatedly until .next_request is None)
+            proxy_response2 = await self.client.send(proxy_response.next_request, stream=True, follow_redirects=self.follow_redirects)
+            tasks.add_task(proxy_response2.aclose)
+            proxy_response = proxy_response2
+
+        if "cloudflare" in proxy_response.headers["server"]:
+            Logger(9, "CLOUDFARE_PROTECTED_RESOURCE: status:%s ; head:%s" %(proxy_response.status_code, proxy_response.headers))
+
         proxy_response_headers = _change_server_header(headers=proxy_response.headers)
         client_origin = "*"
         if "origin" in request.headers:
@@ -210,6 +233,13 @@ class ForwardHttpProxy():
         proxy_response_headers.update({"Access-Control-Allow-Methods": request.method})
         proxy_response_headers.update({"Access-Control-Allow-Headers": "*"})
         proxy_response_headers.update({"Access-Control-Max-Age": "86400"})
+
+        Logger(9, "proxied: status:%s ; url:%s ; head:%s" %(
+            str(proxy_response.status_code),
+            str(proxy_response.url),
+            proxy_response_headers,
+            )
+        )
 
         return StreamingResponse(
             content=proxy_response.aiter_raw(),

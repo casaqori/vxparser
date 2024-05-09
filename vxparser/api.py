@@ -249,7 +249,7 @@ async def panel_post(username: Annotated[str, Form()] = None, password: Annotate
 
 @app.head("/live/{any_path:path}")
 @app.options("/live/{any_path:path}", status_code=204)
-@app.get("/live/{username}/{password}/{sid}.{ext}", response_class=StreamingResponse)
+@app.get("/live/{username}/{password}/{sid}.{ext}", response_class=RedirectResponse, status_code=302)
 async def live(request: Request, username: str, password: str, sid: str, ext: str):
     if username is None: username = "nobody"
     if password is None: password = "pass"
@@ -269,14 +269,15 @@ async def live(request: Request, username: str, password: str, sid: str, ext: st
         if data:
             link = vavoo.resolve_link(data['hls'])
             if link:
-                return await proxy.stream(request=request, stream_url=link)
+                #return await proxy.stream(request=request, stream_url=link)
+                return link
             else: raise HTTPException(status_code=404, detail="Stream not found")
         else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
 @app.head("/{typ}/{any_path:path}")
 @app.options("/{typ}/{any_path:path}", status_code=204)
-@app.get("/{typ}/{username}/{password}/{sid}.{ext}", response_class=StreamingResponse)
+@app.get("/{typ}/{username}/{password}/{sid}.{ext}", response_class=StreamingResponse, status_code=200)
 async def vod(request: Request, typ: str, username: str, password: str, sid: str, ext: str):
     if username is None: username = "nobody"
     if password is None: password = "pass"
@@ -375,7 +376,7 @@ def m3u8(m3u8: str):
 
 @app.head("/channel/{sid}")
 @app.options("/channel/{sid}", status_code=204)
-@app.get("/channel/{sid}", response_class=StreamingResponse)
+@app.get("/channel/{sid}", response_class=StreamingResponse, status_code=200)
 async def channel(request: Request, sid: str):
     cur = con1.cursor()
     cur.execute('SELECT * FROM channel WHERE id="' + sid + '"')
@@ -390,7 +391,7 @@ async def channel(request: Request, sid: str):
 
 @app.head("/hls/{sid}")
 @app.options("/hls/{sid}", status_code=204)
-@app.get("/hls/{sid}", response_class=StreamingResponse)
+@app.get("/hls/{sid}", response_class=RedirectResponse, status_code=302)
 async def channel(request: Request, sid: str):
     cur = con1.cursor()
     cur.execute('SELECT * FROM channel WHERE id="' + sid + '"')
@@ -398,14 +399,15 @@ async def channel(request: Request, sid: str):
     if data:
         link = vavoo.resolve_link(data['hls'])
         if link:
-            return await proxy.stream(request=request, stream_url=link)
+            # return await proxy.stream(request=request, stream_url=link)
+            return link
         else: raise HTTPException(status_code=404, detail="Stream not found")
     else: raise HTTPException(status_code=404, detail="Stream not found")
 
 
 @app.head("/stream/{sid}")
 @app.options("/stream/{sid}", status_code=204)
-@app.get("/stream/{sid}", response_class=StreamingResponse)
+@app.get("/stream/{sid}", response_class=StreamingResponse, status_code=200)
 async def stream(request: Request, sid: str):
     cur = con2.cursor()
     cur.execute('SELECT * FROM streams WHERE id="' + sid + '"')
@@ -476,7 +478,7 @@ def root():
 @app.options("/video/{sid}", status_code=204)
 @app.get("/video/{sid}", response_class=HTMLResponse, status_code=200)
 async def video(sid: str):
-    # TODO streaming requires video.js player
+    # TODO streaming requires video.js hls-player and dynamic proxy-routing capabilities
     content = f"""
 <body>
 <video controls width="1280px" height="720px" preload="none" src="/hls/{sid}" />
